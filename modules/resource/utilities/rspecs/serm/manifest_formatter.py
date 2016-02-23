@@ -27,7 +27,10 @@ class SERMv3ManifestFormatter(TNRMv3ManifestFormatter):
         if l.get("sliver_id") is not None:
             link_.attrib["sliver_id"] = l.get("sliver_id")
 
-        if l.get("vlantag") is not None:
+        # Note: vlantag attribute used only in original RSpec format
+        # (where VLANs are not defined in the interface's component ID)
+        if "vlan=" not in l.get("component_id") and \
+                l.get("vlantag") is not None:
             link_.attrib["vlantag"] = l.get("vlantag")
 
         if l.get("component_manager_uuid") is not None:
@@ -44,11 +47,12 @@ class SERMv3ManifestFormatter(TNRMv3ManifestFormatter):
             ifr_ = etree.SubElement(link_, "{%s}interface_ref" % (self.xmlns))
             ifr_.attrib["client_id"] = i.get("component_id")
 
-        for p in l.get("property"):
-            prop_ = etree.SubElement(link_, "{%s}property" % (self.xmlns))
-            prop_.attrib["source_id"] = p.get("source_id")
-            prop_.attrib["dest_id"] = p.get("dest_id")
-            prop_.attrib["capacity"] = p.get("capacity")
+        # NOTE: property tag not used
+#        for p in l.get("property"):
+#            prop_ = etree.SubElement(link_, "{%s}property" % (self.xmlns))
+#            prop_.attrib["source_id"] = p.get("source_id")
+#            prop_.attrib["dest_id"] = p.get("dest_id")
+#            prop_.attrib["capacity"] = p.get("capacity")
 
     def link(self, l):
         self.add_link(self.rspec, l)

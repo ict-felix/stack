@@ -36,7 +36,7 @@ class SliceMonitoring(BaseMonitoring):
         self.__topologies = etree.Element("topology_list")
         self.__stored = {}
         self.__mapping_c_interface = {}
-        #self.__sdn_links = []
+        # self.__sdn_links = []
         self.__se_links = []
         self.__tn_links = []
         self.__hybrid_links = []
@@ -178,7 +178,8 @@ class SliceMonitoring(BaseMonitoring):
             link_ = etree.Element("link")
             link_.set("type", link_type)
             root = link_
-        if MonitoringUtils.check_existing_tag_in_topology(root, "link", link_type, [ep_src, ep_dst]):
+        if MonitoringUtils.check_existing_tag_in_topology(
+                root, "link", link_type, [ep_src, ep_dst]):
             return
         if link_type is not None:
             topology_tag.append(root)
@@ -230,9 +231,10 @@ class SliceMonitoring(BaseMonitoring):
             logger.debug("Match=%s" % (m,))
             self.__update_match_with_groups(m, groups)
 
-            ## TODO Check db.topology.slice (maybe some information stored?)
+            # TODO Check db.topology.slice (maybe some information stored?)
             for dpid in m.get("dpids"):
-                if MonitoringUtils.check_existing_tag_in_topology(topology, "node", "switch", dpid.get("component_id")):
+                if MonitoringUtils.check_existing_tag_in_topology(
+                        topology, "node", "switch", dpid.get("component_id")):
                     break
                 logger.debug("Dpid=%s" % (dpid,))
 
@@ -259,8 +261,9 @@ class SliceMonitoring(BaseMonitoring):
             if com_link:
                 logger.debug("COM link=%s" % (com_link,))
                 for eps in com_link.get("links"):
-                    if MonitoringUtils.check_existing_tag_in_topology(topology, "link",\
-                        self.MS_LINK_TYPE, [eps.get("source_id"), eps.get("dest_id")]):
+                    if MonitoringUtils.check_existing_tag_in_topology(
+                            topology, "link", self.MS_LINK_TYPE,
+                            [eps.get("source_id"), eps.get("dest_id")]):
                         break
 
                     # Modify link on-the-fly to add the DPID port as needed
@@ -272,7 +275,8 @@ class SliceMonitoring(BaseMonitoring):
 
                     logger.info("eps_src_id=%s, eps_dst_id=%s" %
                                 (eps_src_id, eps_dst_id,))
-                    self.__add_link_info(topology, eps_src_id, eps_dst_id, com_link.get("link_type"))
+                    self.__add_link_info(topology, eps_src_id,
+                                         eps_dst_id, com_link.get("link_type"))
 
         # SDN-SDN link info
         ext_link_ids = self.__extend_link_ids(link_ids)
@@ -290,9 +294,10 @@ class SliceMonitoring(BaseMonitoring):
                     ep2 = self.__create_link_id(
                         sdn_link.get("dpids")[1].get("component_id").
                         sdn_link.get("ports")[1].get("port_num"))
-                    # Local SDN-SDN links are not inserted under the nested link
+                    # Local SDN-SDN links not inserted under nested link
 #                    if self.__check_ids_same_domain(ep1, ep2):
-                    self.__add_link_info(topology, ep1, ep2, self.SDN2SDN_LINK_TYPE)
+                    self.__add_link_info(topology, ep1, ep2,
+                                         self.SDN2SDN_LINK_TYPE)
 #                    else:
 #                        self.__sdn_links.append(
 #                            {'id': sdn_link.get("component_id"),
@@ -327,19 +332,22 @@ class SliceMonitoring(BaseMonitoring):
                          of a given peer
         """
         if slice_urn not in self.__stored:
-            logger.error("Slice monitoring: unable to find Topology info from %s!" % slice_urn)
+            logger.error("Slice monitoring: unable to find Topology \
+                info from %s!" % slice_urn)
             return
 
         topology = self.__stored.get(slice_urn)
 
         logger.debug("add_tn_resources Nodes=%d, PeerInfo=%s" %
                      (len(nodes), peer_info,))
-        # Iterate over the TN nodes to fetch its component ID, interface and associated VLAN tag
+        # Iterate over the TN nodes to fetch its component ID,
+        # interface and associated VLAN tag
         for n in nodes:
             logger.debug("Node=%s" % (n,))
 
             node_ = etree.SubElement(
-                topology, "node", id=n.get("component_id"), type=self.TN2TN_LINK_TYPE)
+                topology, "node", id=n.get("component_id"),
+                type=self.TN2TN_LINK_TYPE)
 
             for ifs in n.get("interfaces"):
                 etree.SubElement(
@@ -361,7 +369,9 @@ class SliceMonitoring(BaseMonitoring):
                 # we use the attributes of the first "property" here!
                 if len(l.get("property")) >= 1:
                     p = l.get("property")[0]
-                    #self.__add_link_info(topology, p.get("source_id"), p.get("dest_id"), self.TN2TN_LINK_TYPE)
+                    # self.__add_link_info(
+                    #    topology, p.get("source_id"),
+                    #    p.get("dest_id"), self.TN2TN_LINK_TYPE)
                     # store the values for the virtual island-to-island link
                     self.__tn_links.append(
                         {'id': l.get("component_id"),
@@ -376,7 +386,7 @@ class SliceMonitoring(BaseMonitoring):
 
             if extif is not None:
                 # Adding SE-to-SDN or SE-to-TN link
-#                self.__add_link_info(topo, i, extif, self.MS_LINK_TYPE)
+                # self.__add_link_info(topo, i, extif, self.MS_LINK_TYPE)
                 # store the values for the virtual island-to-island link
                 self.__hybrid_links.append({'source': i, 'destination': extif})
 
@@ -409,7 +419,8 @@ class SliceMonitoring(BaseMonitoring):
         for n in nodes:
             logger.debug("Node=%s" % (n,))
             node_ = etree.SubElement(
-                topology, "node", id=n.get("component_id"), type=self.SE_LINK_TYPE)
+                topology, "node", id=n.get("component_id"),
+                type=self.SE_LINK_TYPE)
 
             if n.get("host_name"):
                 self.__add_snmp_management(node_, n.get("host_name"))
@@ -420,9 +431,22 @@ class SliceMonitoring(BaseMonitoring):
                 # Try to extract port info from the component id!
                 self.__add_se_port_from_interface(
                     ifs.get("component_id"), interface_)
-                vlan = ifs.get("vlan")[0].get("tag")
-                m_ = etree.SubElement(node_, "match")
-                etree.SubElement(m_, "vlan", start=vlan, end=vlan)
+#                vlan = ifs.get("vlan")[0].get("tag")
+#                    vlan1, vlan2 = l.get("component_id")
+#                m_ = etree.SubElement(node_, "match")
+#                etree.SubElement(m_, "vlan", start=vlan, end=vlan)
+                for l in links:
+                    # FIXME: incorrect comparison
+                    link_id = l.get("component_id")
+                    if link_id == ifs.get("component_id"):
+                        urn_src, vlan_src, urn_dst, vlan_dst = \
+                            URNUtils.get_fields_from_domain_link_id(link_id)
+                        m_ = etree.SubElement(node_, "match")
+                        etree.SubElement(m_, "vlan",
+                                         start=vlan_src, end=vlan_src)
+                        m_ = etree.SubElement(node_, "match")
+                        etree.SubElement(m_, "vlan",
+                                         start=vlan_dst, end=vlan_dst)
 
         logger.debug("add_se_resources Links=%d" % (len(links),))
         for l in links:
@@ -434,9 +458,10 @@ class SliceMonitoring(BaseMonitoring):
                 continue
 
             # is it really necessary to put bidirectional links?
-#            self.__add_link_info(topology, l.get("interface_ref")[0].get("component_id"),
-#                                 l.get("interface_ref")[1].get("component_id"),
-#                                 l.get("link_type"))
+            # self.__add_link_info(topology,
+            #                      l.get("interface_ref")[0].get("component_id"),
+            #                      l.get("interface_ref")[1].get("component_id"),
+            #                      l.get("link_type"))
 
             # store the values for the virtual island-to-island link
             self.__se_links.append(
@@ -453,9 +478,11 @@ class SliceMonitoring(BaseMonitoring):
     def __add_island2island_tnlink(self, info, tag):
         tn_src = info.get("source")
         tn_dst = info.get("destination")
-        if MonitoringUtils.check_existing_tag_in_topology(tag, "link", self.TN2TN_LINK_TYPE, [tn_src, tn_dst]):
+        if MonitoringUtils.check_existing_tag_in_topology(
+                tag, "link", self.TN2TN_LINK_TYPE, [tn_src, tn_dst]):
             return
-        tn_ = etree.SubElement(tag, "link", type=self.TN2TN_LINK_TYPE, id=info.get("id"))
+        tn_ = etree.SubElement(tag, "link",
+                               type=self.TN2TN_LINK_TYPE, id=info.get("id"))
         etree.SubElement(tn_, "interface_ref", client_id=tn_src)
         etree.SubElement(
             tn_, "interface_ref", client_id=tn_dst)
@@ -472,7 +499,8 @@ class SliceMonitoring(BaseMonitoring):
         return None
 
     def __add_island2island_lanlink(self, src, dst, tag):
-        if MonitoringUtils.check_existing_tag_in_topology(tag, "link", self.MS_LINK_TYPE, [src, dst]):
+        if MonitoringUtils.check_existing_tag_in_topology(
+                tag, "link", self.MS_LINK_TYPE, [src, dst]):
             return
         logger.info("Lan link between %s and %s" % (src, dst,))
         if (src is not None) and (dst is not None):
@@ -494,11 +522,13 @@ class SliceMonitoring(BaseMonitoring):
         return None, None
 
     def __add_island2island_selink(self, ident, src, dst, tag):
-        if MonitoringUtils.check_existing_tag_in_topology(tag, "link", self.MS_LINK_TYPE, [src, dst]):
+        if MonitoringUtils.check_existing_tag_in_topology(
+                tag, "link", self.MS_LINK_TYPE, [src, dst]):
             return
         logger.info("Se link (%s) between %s and %s" % (ident, src, dst,))
         if (ident is not None) and (src is not None) and (dst is not None):
-            se_ = etree.SubElement(tag, "link", type=self.MS_LINK_TYPE, id=ident)
+            se_ = etree.SubElement(
+                tag, "link", type=self.MS_LINK_TYPE, id=ident)
             etree.SubElement(se_, "interface_ref", client_id=src)
             etree.SubElement(se_, "interface_ref", client_id=dst)
         else:
@@ -515,13 +545,15 @@ class SliceMonitoring(BaseMonitoring):
     def __add_virtual_link(self, link_subset):
         # Retrieve the SDN endpoints of the slice ("abstract link" in M/MS)
         se_link_urns = []
-        # and obtain the SDN resources from those domains that are linked to the TN link
+        # And obtain the SDN resources from those domains
+        # that are linked to the TN link
         for se_link in self.__hybrid_links:
-            se_link_urns.extend([se_link.get("source"), se_link.get("destination")])
+            se_link_urns.extend(
+                [se_link.get("source"), se_link.get("destination")])
 
         vlink_orgs = []
         sdn_link_urns = []
-        # XXX It would be necessary to iterate over the TN links, identify their domain
+        # XXX It is necessary to iterate over TN links, identify their domain
         for se_link in se_link_urns:
             se_link_auth = URNUtils.get_authority_from_urn(se_link)
             if ":ofam" in se_link and se_link_auth not in vlink_orgs:
@@ -532,7 +564,8 @@ class SliceMonitoring(BaseMonitoring):
         # For loop (step: 2, reason: finding SDN#1 port <--> SDN#2 port)
         for i in xrange(0, len(sdn_link_urns), 2):
             try:
-                self.__add_link_info(link_subset, sdn_link_urns[i], sdn_link_urns[i+1])
+                self.__add_link_info(
+                    link_subset, sdn_link_urns[i], sdn_link_urns[i+1])
             except:
                 pass
 
@@ -551,24 +584,32 @@ class SliceMonitoring(BaseMonitoring):
         # Add virtual link
         self.__add_virtual_link(virtual_)
 
-#        for sdn_link in self.__sdn_links:
-#            logger.info("SDN-link=%s" % (sdn_link,))
-#            # Adding inter-domain SDN-to-SDN links
-#            self.__add_link_info(virtual_, sdn_link.get("source"), sdn_link.get("destination"), self.MS_LINK_TYPE)
+        # for sdn_link in self.__sdn_links:
+        #     logger.info("SDN-link=%s" % (sdn_link,))
+        #     # Adding inter-domain SDN-to-SDN links
+        #     self.__add_link_info(
+        #           virtual_, sdn_link.get("source"),
+        #           sdn_link.get("destination"), self.MS_LINK_TYPE)
 
         for se_link in self.__se_links:
-#            if MonitoringUtils.check_existing_tag_in_topology(virtual_, "link", None, [se_link.get("source"), se_link.get("destination")]):
-#                break
+            # if MonitoringUtils.check_existing_tag_in_topology(
+            #         virtual_, "link", None,
+            #         [se_link.get("source"), se_link.get("destination")]):
+            #     break
             logger.info("SE-link=%s" % (se_link,))
             # Adding SE-to-SDN or SE-to-TN link
-            self.__add_link_info(virtual_, se_link.get("source"), se_link.get("destination"), self.MS_LINK_TYPE)
+            self.__add_link_info(virtual_, se_link.get("source"),
+                                 se_link.get("destination"), self.MS_LINK_TYPE)
 
         for se_link in self.__hybrid_links:
-#            if MonitoringUtils.check_existing_tag_in_topology(virtual_, "link", self.MS_LINK_TYPE, [se_link.get("source"), se_link.get("destination")]):
-#                break
+            # if MonitoringUtils.check_existing_tag_in_topology(
+            #         virtual_, "link", self.MS_LINK_TYPE,
+            #         [se_link.get("source"), se_link.get("destination")]):
+            #     break
             logger.info("SE-hybrid-link=%s" % (se_link,))
             # Adding SE-to-SDN or SE-to-TN link
-            self.__add_link_info(virtual_, se_link.get("source"), se_link.get("destination"), self.MS_LINK_TYPE)
+            self.__add_link_info(virtual_, se_link.get("source"),
+                                 se_link.get("destination"), self.MS_LINK_TYPE)
 
         for tn_link in self.__tn_links:
             logger.info("TN-link=%s" % (tn_link,))
@@ -608,7 +649,6 @@ class SliceMonitoring(BaseMonitoring):
 
             # Finally, add the sdn interfaces
             self.__add_island2island_sdnif(sdn_if_src, sdn_if_dst, virtual_)
-
 
     def send(self):
         try:

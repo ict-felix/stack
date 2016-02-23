@@ -55,8 +55,8 @@ class CommonUtils(object):
     @staticmethod
     def is_implicit_allocation(rspec):
         # Ensure TN and SE resources are not present
-        return not(CommonUtils.is_explicit_tn_allocation(rspec) \
-            and CommonUtils.is_explicit_se_allocation(rspec))
+        return not(CommonUtils.is_explicit_tn_allocation(rspec)
+                   and CommonUtils.is_explicit_se_allocation(rspec))
 
     @staticmethod
     def is_virtual_links(rspec):
@@ -87,14 +87,16 @@ class CommonUtils(object):
         try:
             values_ranges = values.split(",")
             logger.debug("Parsing list of ranges of VLANs: %s" % values_ranges)
-            values_ranges = [ r.split("-") for r in values_ranges ]
+            values_ranges = [r.split("-") for r in values_ranges]
             for value_range in values_ranges:
                 if len(value_range) == 2:
-                    value_range = xrange(int(value_range[0]), int(value_range[1])+1)
+                    value_range = xrange(
+                        int(value_range[0]), int(value_range[1])+1)
                 new_values.extend(value_range)
             new_values = map(lambda x: int(x), new_values)
         except Exception as e:
-            logger.warning("Could not generate range of available values. Details: %s" % e)
+            logger.warning("Could not generate range of available values. \
+                Details: %s" % e)
         return new_values
 
     @staticmethod
@@ -109,13 +111,16 @@ class CommonUtils(object):
         client_urn = None
         if len(geni_users) >= 1:
             # Any could be used
-            #client_urn = geni_users[0]["urn"]
-            client_urn = xrn.urn_to_hrn(geni_users[0]["urn"])[0].replace("\\","")
-            #client_urn = xrn.get_leaf(xrn.urn_to_hrn(geni_users[0]["urn"])[0])
+            # client_urn = geni_users[0]["urn"]
+            client_urn = xrn.urn_to_hrn(
+                geni_users[0]["urn"])[0].replace("\\", "")
+            # client_urn = xrn.get_leaf(xrn.urn_to_hrn(
+            #    geni_users[0]["urn"])[0])
         return client_urn
 
     @staticmethod
-    def convert_sliver_dates_to_datetime(geni_slivers, geni_expires_value=None):
+    def convert_sliver_dates_to_datetime(geni_slivers,
+                                         geni_expires_value=None):
         """
         Given the GENI slivers structure, converts every 'geni_expires'
         field inside (in rfc3339) format to a datetime object. This is the
@@ -165,6 +170,7 @@ class CommonUtils(object):
         for dbs in values:
             db_slivers.append({"geni_sliver_urn": dbs.get("geni_sliver_urn"),
                                "routing_key": routing_key})
+
     @staticmethod
     def manage_renew(peer, urns, creds, etime, beffort):
         try:

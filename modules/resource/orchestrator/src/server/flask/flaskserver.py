@@ -1,9 +1,9 @@
 from flask import Flask, g, request, request_started, request_finished
-#from flask.ext.pymongo import PyMongo
+# from flask.ext.pymongo import PyMongo
 
 from core.config import FullConfParser
 from core import log
-logger=log.getLogger("flaskserver")
+logger = log.getLogger("flaskserver")
 from db.db_manager import db_sync_manager
 from server.flask.views import ro_flask_views
 
@@ -14,8 +14,12 @@ import ast
 import os
 import sys
 
+
 class ClientCertHTTPRequestHandler(serving.WSGIRequestHandler):
-    """Overwrite the werkzeug handler, so we can extract the client cert and put it into the request's environment."""
+    """
+    Overwrite the werkzeug handler, so we can extract the client cert and
+    put it into the request's environment.
+    """
     def make_environ(self):
         env = super(ClientCertHTTPRequestHandler, self).make_environ()
         if self._client_cert:
@@ -32,6 +36,7 @@ class ClientCertHTTPRequestHandler(serving.WSGIRequestHandler):
         else:
             self._client_cert = None
 
+
 class FlaskServer(object):
     """
     Encapsules a flask server instance.
@@ -44,51 +49,70 @@ class FlaskServer(object):
     """
 
     def __init__(self):
-        """Constructor for the server wrapper."""
-        #self._app = Flask(__name__) # imports the named package, in this case this file
+        """
+        Constructor for the server wrapper.
+        """
+        # Imports the named package, in this case this file
+        # self._app = Flask(__name__)
         self.__load_config()
-        self._app = Flask(__name__.split(".")[-1], template_folder = self.template_folder)
-        self._app.mongo = db_sync_manager #PyMongo(self._app)
+        self._app = Flask(__name__.split(".")[-1],
+                          template_folder=self.template_folder)
+        # self._app_mongo = PyMongo(self._app)
+        self._app.mongo = db_sync_manager
         self._app.db = "felix_mro" if self.mro_enabled else "felix_ro"
         # Added in order to be able to execute "before_request" method
         app = self._app
 
         # Setup debugging for app
         cDebug = self.general_section.get("debug")
-        if cDebug: # log all actions on the XML-RPC interface
+        # Log all actions on the XML-RPC interface
+        if cDebug:
             def log_request(sender, **extra):
-                logger.info(">>> REQUEST %s:\n%s" % (request.path, request.data))
+                logger.info(
+                    ">>> REQUEST %s:\n%s" % (request.path, request.data))
             request_started.connect(log_request, self._app)
+
             def log_response(sender, response, **extra):
-                logger.info(">>> RESPONSE %s:\n%s" % (response.status, response.data))
+                logger.info(
+                    ">>> RESPONSE %s:\n%s" % (response.status, response.data))
             request_finished.connect(log_response, self._app)
 
         @app.before_request
         def before_request():
-            # "Attach" objects within the "g" object. This is passed to each view method
+            # "Attach" objects within the "g" object.
+            # This is passed to each view method
             g.mongo = self._app.mongo
 
     def __load_config(self):
-        # Imports the named module (package includes "." and this is not nice with PyMongo)
+        # Imports the named module (package includes "." and
+        # that is not cool with PyMongo)
         self.config = FullConfParser()
         self.flask_category = self.config.get("flask.conf")
         self.general_section = self.flask_category.get("general")
         self.template_folder = self.general_section.get("template_folder")
-        self.template_folder = os.path.normpath(os.path.join(os.path.dirname(__file__),\
-            "../../..", self.template_folder))
+        self.template_folder = os.path.normpath(
+            os.path.join(os.path.dirname(__file__),
+                         "../../..", self.template_folder))
         self.fcgi_section = self.flask_category.get("fcgi")
-        self.certificates_flask_section = self.flask_category.get("certificates")
+        self.certificates_flask_section = \
+            self.flask_category.get("certificates")
         self.auth_category = self.config.get("auth.conf")
-        self.certificates_auth_section = self.auth_category.get("certificates")
+        self.certificates_auth_section = \
+            self.auth_category.get("certificates")
         # Verification and certificates
         self._verify_users =\
-            ast.literal_eval(self.certificates_auth_section.get("verify_users"))
+            ast.literal_eval(
+                self.certificates_auth_section.get("verify_users"))
         self.mro_section = self.config.get("ro.conf").get("master_ro")
-        self.mro_enabled = ast.literal_eval(self.mro_section.get("mro_enabled"))
+        self.mro_enabled = ast.literal_eval(
+            self.mro_section.get("mro_enabled"))
 
     @property
     def app(self):
-        """Returns the flask instance (not part of the service interface, since it is specific to flask)."""
+        """
+        Returns the flask instance (not part of the service interface,
+        since it is specific to flask).
+        """
         return self._app
 
     def add_routes(self):
@@ -96,81 +120,110 @@ class FlaskServer(object):
         New method. Allows to register URLs from a the views file.
         """
 #        from server.flask import views as flask_views
-#        flask_views_custom_methods = filter(lambda x: x.startswith("view_"), dir(flask_views))
+#        flask_views_custom_methods = filter(lambda x: x.startswith("view_"),
+#            dir(flask_views))
 #        for custom_method in flask_views_custom_methods:
 #            # Retrieve data needed to add the URL rule to the Flask app
 #            view_method = getattr(locals()["flask_views"], custom_method)
 #            docstring = getattr(view_method, "__doc__")
 #            index_start = docstring.index("@app.route")
 #            index_end = index_start + len("@app.route") + 1
-#            custom_method_url = docstring[index_end:].replace(" ","").replace("\n","")
-#            # Get: (a) method URL to bind flask app, (b), method name, (c) method object to invoke
-#            self._app.add_url_rule(custom_method_url, custom_method, view_func=view_method(self._app.mongo))
+#            custom_method_url = docstring[index_end:].\
+#                replace(" ","").replace("\n","")
+#            # Get: (a) method URL to bind flask app, (b), method name,
+#             # (c) method object to invoke
+#            self._app.add_url_rule(custom_method_url, custom_method,
+#                 view_func=view_method(self._app.mongo))
         self._app.register_blueprint(ro_flask_views)
 
     def runServer(self, services=[]):
-        """Starts up the server. It (will) support different config options via the config plugin."""
+        """
+        Starts up the server. It (will) support different config options
+        via the config plugin.
+        """
         self.add_routes()
-        #debug = self.general_section.get("debug")
+        # debug = self.general_section.get("debug")
         host = self.general_section.get("host")
-        use_reloader = ast.literal_eval(self.general_section.get("use_reloader"))
+        use_reloader = \
+            ast.literal_eval(self.general_section.get("use_reloader"))
         app_port = int(self.general_section.get("port"))
         cFCGI = ast.literal_eval(self.fcgi_section.get("enabled"))
         fcgi_port = int(self.fcgi_section.get("port"))
-        must_have_client_cert = ast.literal_eval(self.certificates_flask_section.get("force_client_certificate"))
+        must_have_client_cert = \
+            ast.literal_eval(self.certificates_flask_section.get(
+                "force_client_certificate"))
         if cFCGI:
             logger.info("registering fcgi server at %s:%i", host, fcgi_port)
             from flup.server.fcgi import WSGIServer
             WSGIServer(self._app, bindAddress=(host, fcgi_port)).run()
         else:
             logger.info("registering app server at %s:%i", host, app_port)
-            # this workaround makes sure that the client cert can be acquired later (even when running the development server)
-            # copied all this stuff from the actual flask implementation, so we can intervene and adjust the ssl context
-            # self._app.run(host=host, port=app_port, ssl_context='adhoc', debug=debug, request_handler=ClientCertHTTPRequestHandler)
+            # This workaround makes sure that the client cert can be acquired
+            # later (even when running the development server) copied all
+            # this stuff from the actual flask implementation, so we can
+            # intervene and adjust the ssl context
+            # self._app.run(host=host, port=app_port, ssl_context='adhoc',
+            #      debug=debug, request_handler=ClientCertHTTPRequestHandler)
 
-            # the code from flask's `run...`
-            # see https://github.com/mitsuhiko/flask/blob/master/flask/app.py
-            #options = {}
+            # The code from flask's `run...`
+            # See https://github.com/mitsuhiko/flask/blob/master/flask/app.py
+            # options = {}
             try:
-                # now the code from werkzeug's `run_simple(host, app_port, self._app, **options)`
-                # see https://github.com/mitsuhiko/werkzeug/blob/master/werkzeug/serving.py
-                #from werkzeug.debug import DebuggedApplication
+                # Now the code from werkzeug's
+                # `run_simple(host, app_port, self._app, **options)`
+                # See https://github.com/mitsuhiko/werkzeug/blob/master/\
+                #     werkzeug/serving.py
+                # from werkzeug.debug import DebuggedApplication
                 import socket
-                #application = DebuggedApplication(self._app, True)
-                
+                # application = DebuggedApplication(self._app, True)
+
                 # Set up an SSL context
                 context = SSL.Context(SSL.SSLv23_METHOD)
-                certs_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../..", "cert"))
+                certs_path = os.path.normpath(os.path.join(
+                    os.path.dirname(__file__), "../../..", "cert"))
                 context_crt = os.path.join(certs_path, "server.crt")
                 context_key = os.path.join(certs_path, "server.key")
                 try:
                     context.use_certificate_file(context_crt)
                     context.use_privatekey_file(context_key)
                 except Exception as e:
-                    logger.critical("error starting flask server. Cert or key is missing under %s", certs_path)
+                    logger.critical("Error starting flask server. \
+                        Cert or key is missing under %s", certs_path)
                     sys.exit(e)
-                
+
                 def inner():
-                    #server = serving.make_server(host, app_port, self._app, False, 1, ClientCertHTTPRequestHandler, False, 'adhoc')
-                    server = serving.make_server(host, app_port, self._app, False, 1, ClientCertHTTPRequestHandler, False, ssl_context=context)
-                    #server = serving.make_server(host, app_port, self._app, False, 1, ClientCertHTTPRequestHandler, False, ssl_context=(context_crt, context_key)) 
-                    # The following line is the reason why I copied all that code!
+                    # server = serving.make_server(host, app_port, self._app,
+                    #     False, 1, ClientCertHTTPRequestHandler, False,
+                    #     'adhoc')
+                    server = serving.make_server(
+                        host, app_port, self._app, False, 1,
+                        ClientCertHTTPRequestHandler, False,
+                        ssl_context=context)
+                    # server = serving.make_server(host, app_port, self._app,
+                    #     False, 1, ClientCertHTTPRequestHandler,
+                    #     False, ssl_context=(context_crt, context_key))
+                    # Following line is the reason why I copied all that code!
                     if must_have_client_cert:
-                        # FIXME: what works with web app does not work with cli. Check this out
-                        server.ssl_context.set_verify(SSL.VERIFY_PEER | SSL.VERIFY_FAIL_IF_NO_PEER_CERT, lambda a,b,c,d,e: True)
-                    # before enter in the loop, start the supplementary services
+                        # FIXME: what works with webapp does not with CLI
+                        server.ssl_context.set_verify(
+                            SSL.VERIFY_PEER |
+                            SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
+                            lambda a, b, c, d, e: True)
+                    # Before entering loop, start supplementary services
                     for s in services:
                         s.start()
                     # That's it
                     server.serve_forever()
                 address_family = serving.select_ip_version(host, app_port)
                 test_socket = socket.socket(address_family, socket.SOCK_STREAM)
-                test_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                test_socket.setsockopt(
+                    socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 test_socket.bind((host, app_port))
                 test_socket.close()
                 # Disable reloader only by explicit config setting
-                if use_reloader == False:
-                    serving.run_simple(host, app_port, self._app, use_reloader=False)
+                if use_reloader is False:
+                    serving.run_simple(
+                        host, app_port, self._app, use_reloader=False)
                 else:
                     serving.run_with_reloader(inner, None, 1)
             finally:

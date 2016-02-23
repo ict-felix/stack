@@ -1,3 +1,4 @@
+from core.utils.urns import URNUtils
 from rspecs.parser_base import ParserBase
 from rspecs.commons_se import SELink
 from rspecs.commons_tn import Node, Interface
@@ -19,9 +20,9 @@ class SERMv3RequestParser(ParserBase):
         # (component_manager_id) fields
         # At least we verify the autority field here!
         if node.attrib.get("component_manager_id", None) is not None and \
-            node.attrib.get("client_id", None) is not None:
+                node.attrib.get("client_id", None) is not None:
             if "serm" in node.attrib.get("component_manager_id", "") or \
-                "serm" in node.attrib.get("client_id", ""):
+                    "serm" in node.attrib.get("client_id", ""):
                 return True
         return False
 
@@ -56,6 +57,7 @@ class SERMv3RequestParser(ParserBase):
 
             for i in n.iterfind("{%s}interface" % (self.none)):
                 interface = Interface(i.attrib.get("client_id"))
+                # Note: old format using 'sharedvlan' namespace
                 for sv in i.iterfind("{%s}link_shared_vlan" % (self.__sv)):
                     interface.add_vlan(sv.attrib.get("vlantag"),
                                        sv.attrib.get("name"))
@@ -69,8 +71,10 @@ class SERMv3RequestParser(ParserBase):
 
     def get_links(self, rspec):
         links_ = []
+
         for l in rspec.findall(".//{%s}link" % (self.none)):
             manager_ = l.find("{%s}component_manager" % (self.none))
+
             if manager_ is None:
                 self.raise_exception("Component-Mgr tag not found in link!")
 
@@ -82,15 +86,30 @@ class SERMv3RequestParser(ParserBase):
             if type_ is None:
                 self.raise_exception("Link-Type tag not found in link!")
 
-            l_ = SELink(l.attrib.get("client_id"), type_.attrib.get("name"),
-                        manager_.attrib.get("name"))
+            # Note: client_id for a link may follow one of the formats:
+                # Original: "urn:publicid:IDN+fms:psnc:serm+link+
+                # <dpid1>_6_<dpid2>_7",
+                # New: "urn:publicid:IDN+fms:psnc:serm+link+
+                # <dpid1>_6?vlan=1_<dpid2>_7?vlan=2",
+            # In case of receiving the new one, it must be translated to
+            # the original one (advertised by SERM); otherwise it will not be
+            # possible to find the link in the Mongo serm.link collection
+            client_id = l.attrib.get("client_id")
+            # client_id_2 = URNUtils.convert_se_link_id_to_adv_id(client_id)
 
+            l_ = SELink(client_id, type_.attrib.get("name"),
+                        manager_.attrib.get("name"))
             self.update_protogeni_cm_uuid(l, l_)
 
             # FIXME: VLAN seems not properly added to interface
-            [l_.add_interface_ref(i.attrib.get("client_id"),
-            i.attrib.get("{%s}vlan" % (self.__felix)))
-             for i in l.iterfind("{%s}interface_ref" % (self.none))]
+            for i in l.iterfind("{%s}interface_ref" % (self.none)):
+                # 1st check new SERM RSpec format
+                client_id, vlan = URNUtils.\
+                    get_fields_from_domain_iface_id(i.attrib.get("client_id"))
+                if not vlan:
+                    vlan = i.attrib.get("{%s}vlan" % (self.__felix))
+
+                l_.add_interface_ref(client_id, vlan)
 
             [l_.add_property(p.attrib.get("source_id"),
                              p.attrib.get("dest_id"),

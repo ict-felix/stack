@@ -8,13 +8,16 @@ from functools import wraps
 CLI_UNAVAILABLE_MSG = "Method only available via REST API"
 GUI_UNAVAILABLE_MSG = "Method only available via GUI"
 
+
 def parse_output_json(output):
     resp = Response(str(output), status=200, mimetype="application/json")
     return resp
 
+
 def error_on_unallowed_method(output):
     resp = Response(str(output), status=405, mimetype="text/plain")
     return resp
+
 
 def get_user_agent():
     from flask import request
@@ -25,15 +28,20 @@ def get_user_agent():
         pass
     return user_agent
 
+
 def warn_must_use_gui():
     user_agent = get_user_agent()
     if "curl" in user_agent:
-        return error_on_unallowed_method("Method not supported. Details: %s" % GUI_UNAVAILABLE_MSG)
+        return error_on_unallowed_method("Method not supported. \
+            Details: %s" % GUI_UNAVAILABLE_MSG)
+
 
 def warn_must_use_cli():
     user_agent = get_user_agent()
     if "curl" not in user_agent:
-        return error_on_unallowed_method("Method not supported. Details: %s" % CLI_UNAVAILABLE_MSG)
+        return error_on_unallowed_method("Method not supported. \
+            Details: %s" % CLI_UNAVAILABLE_MSG)
+
 
 def check_cli_user_agent(func):
     @wraps(func)
@@ -45,6 +53,7 @@ def check_cli_user_agent(func):
             return func(*args, **kwargs)
     return wrapper
 
+
 def check_gui_user_agent(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -55,14 +64,16 @@ def check_gui_user_agent(func):
             return func(*args, **kwargs)
     return wrapper
 
+
 def get_peers():
-    #domain_routing = g.mongo.db[current_app.db].domain.routing.find()
-    domain_routing = [ p for p in current_app.mongo.get_configured_peers() ]
+    # domain_routing = g.mongo.db[current_app.db].domain.routing.find()
+    domain_routing = [p for p in current_app.mongo.get_configured_peers()]
     # Retrieve domain URN per peer
     for route in domain_routing:
         try:
             peer_urns = []
-            assoc_peers = current_app.mongo.get_info_peers({"_ref_peer": route["_id"]})
+            assoc_peers = current_app.mongo.get_info_peers(
+                {"_ref_peer": route["_id"]})
             for r in range(0, assoc_peers.count()):
                 peer_urns.append(assoc_peers.next().get("domain_urn"))
             route["urn"] = peer_urns
@@ -70,6 +81,7 @@ def get_peers():
         except:
             pass
     return domain_routing
+
 
 def get_used_tn_vlans():
     return TNUtils.find_used_tn_vlans()

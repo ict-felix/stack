@@ -11,4 +11,5 @@ class StringUtils:
             if start == -1:
                 return
             yield start
-            start += len(substring) # use start += 1 to find overlapping matches
+            # Use start += 1 to find overlapping matches
+            start += len(substring)

@@ -161,8 +161,10 @@ class SDNUtils(CommonUtils):
             for group in gm.get("groups"):
                 group_name = group.get("name")
                 if group_name in used_groups:
-                    ren_gname = "%s_%d" % (group_name, random.randrange(1, 1000))
-                    logger.warning("Renaming OF group/matches to '%s'" % ren_gname)
+                    ren_gname = "%s_%d" % \
+                        (group_name, random.randrange(1, 1000))
+                    logger.warning("Renaming OF group/matches to \
+                        '%s'" % ren_gname)
                     for match in gm.get("matches"):
                         for mg in match.get("use_groups"):
                             if mg["name"] == group_name:
@@ -190,13 +192,14 @@ class SDNUtils(CommonUtils):
 
         # Create a structure to group the corresponding matches & groups
         groups_matches = parser.of_groups_matches()
-        logger.debug("GroupsMatches(%d): %s" % (len(groups_matches), groups_matches))
+        logger.debug("GroupsMatches(%d): %s" %
+                     (len(groups_matches), groups_matches))
 
         # Here we need to be sure that the group-name is unique in the rspec.
         # Rename group/matches names if duplicated
         (groups, matches) = self.__rename_groups_matches(groups_matches)
         logger.info("Renamed-Groups(%d): %s, Renamed-Matches(%d): %s" %
-                     (len(groups), groups, len(matches), matches))
+                    (len(groups), groups, len(matches), matches))
 
         # Update the group info to support the mapper module
         for eg in extended_group_info:
