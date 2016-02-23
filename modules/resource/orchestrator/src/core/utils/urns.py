@@ -1,15 +1,16 @@
-from core.organisations import AllowedOrganisations
+from core.organisations import AllowedOrganisations as AllowedOrgs
 from core.utils.strings import StringUtils
-#from extensions.sfa.util.xrn import get_authority
+# from extensions.sfa.util.xrn import get_authority
 from extensions.sfa.util.xrn import urn_to_hrn
+
 
 class URNUtils:
     """
     Contains common operations related to URN processing.
     """
-    ## Dictionaries
-    FELIX_ORGS = AllowedOrganisations.get_organisations_type()
-    FELIX_ORGS_ALIAS = AllowedOrganisations.get_organisations_type_with_alias()
+    # Dictionaries
+    FELIX_ORGS = AllowedOrgs.get_organisations_type()
+    FELIX_ORGS_ALIAS = AllowedOrgs.get_organisations_type_with_alias()
 
 #    @staticmethod
 #    def get_authority_from_urn(urn):
@@ -57,7 +58,6 @@ class URNUtils:
                 pass
         return authority
 
-
     @staticmethod
     # Expects URN of OGF "authority" type
     #   e.g. urn:ogf:network:i2cat.net:2015:gre:felix
@@ -72,7 +72,7 @@ class URNUtils:
         for org in URNUtils.FELIX_ORGS_ALIAS:
             for hrn_element in hrn_list:
                 if org in hrn_element:
-                    authority = AllowedOrganisations.find_organisation_by_alias(org)
+                    authority = AllowedOrgs.find_organisation_by_alias(org)
                 break
         # URN may not follow the standard format...
         if len(authority) == 0:
@@ -81,3 +81,83 @@ class URNUtils:
             except:
                 pass
         return authority
+
+    @staticmethod
+    # Expects URN of SERM/TNRM link
+    def get_fields_from_domain_link_id(link_id):
+        urn_src, vlan_src, urn_dst, vlan_dst = "", "", "", ""
+        import re
+        try:
+            # TN format
+            try:
+                urn_reg = \
+                    "urn.*(urn.*)\?vlan=(\d{1,4})-(urn.*)\?vlan=(\d{1,4})+.*"
+                groups_reg = re.match(urn_reg, link_id)
+                # Force exception check
+                groups_reg.group(0)
+            # SE format
+            except:
+                urn_reg = "urn(.*)\?vlan=(\d{1,4})-(.*)\?vlan=(\d{1,4})"
+                groups_reg = re.match(urn_reg, link_id)
+            urn_src, vlan_src, urn_dst, vlan_dst = \
+                [groups_reg.group(i) for i in xrange(1, 5)]
+            urn_src = "urn" + urn_src
+        except:
+            pass
+        return urn_src, vlan_src, urn_dst, vlan_dst
+
+    @staticmethod
+    # Expects URN of SERM link
+    def convert_se_link_id_to_adv_id(link_id):
+        """
+        Removes VLANs from the SE link so it is possible to search in DB.
+        """
+        urn_src, _, urn_dst, _ = \
+            URNUtils.get_fields_from_domain_link_id(link_id)
+        return "%s_%s" % (urn_src, urn_dst)
+
+    @staticmethod
+    # Expects URN of SERM/TNRM interface
+    def get_fields_from_domain_iface_id(iface_id):
+        """
+        In case of failure, return the interface ID as 1st parameter
+        (because VLAN may be not present in original format for RSpecs)
+        """
+        urn, vlan = iface_id, ""
+        import re
+        try:
+            urn_reg = "urn(.*)\+vlan=(\d{1,4})"
+            groups_reg = re.match(urn_reg, iface_id)
+            urn, vlan = [groups_reg.group(i) for i in xrange(1, 3)]
+            urn = "urn" + urn
+        except:
+            pass
+        return urn, vlan
+
+    @staticmethod
+    # Expects URN of SDNRM/SERM datapath or some partial link
+    def get_datapath_from_datapath_id(link_id):
+        datapath = ""
+        try:
+            import re
+            # Note: typically this would use 'datapath', but can make
+            # use of greedy evaluation to fetch all groups till the end
+            urn_reg = "urn(.*)\+(.*)_\d+"
+            groups_reg = re.match(urn_reg, link_id)
+            _, datapath = [groups_reg.group(i) for i in xrange(1, 3)]
+        except:
+            pass
+        return datapath
+
+    @staticmethod
+    # Expects URN of SDNRM/SERM datapath or some partial link
+    def get_datapath_and_port_from_datapath_id(link_id):
+        datapath = ""
+        try:
+            import re
+            urn_reg = "urn(.*)\+(.*)_(\d+)"
+            groups_reg = re.match(urn_reg, link_id)
+            _, datapath, port = [groups_reg.group(i) for i in xrange(1, 4)]
+        except:
+            pass
+        return datapath, port

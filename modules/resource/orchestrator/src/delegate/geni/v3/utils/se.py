@@ -119,28 +119,36 @@ class SEUtils(CommonUtils):
                     if (scid == ncid) and (scmid == ncmid):
                         for i in v.get("internal_ifs"):
                             intf = Interface(i.get("component_id"))
-                            intf.add_vlan(v.get("vlan"), "")
+                            # intf.add_vlan(v.get("vlan"), "")
                             n.add_interface(intf.serialize())
 
     def __create_link(self, if1, if2, vlan1, vlan2, sliver_id):
         """
         Generates the SE link in a proper format:
-            <urn_dpid_1>_<port1>_<dpid2>_<port2>_<vlan1>_<vlan2>
+            Old: <urn_dpid_1>_<port1>_<dpid2>_<port2>_<vlan1>_<vlan2>
+            New: <urn_dpid_1>_<port1>?vlan=<vlan1>-<dpid2>_<port2>?vlan=<vlan2>
         """
         i = if1.rindex("_")
-        n1, num1 = if1[0:i], if1[i+1:len(if1)]
+        n1, port1 = if1[0:i], if1[i+1:len(if1)]
         i = if2.rindex("_")
-        n2, num2 = if2[0:i], if2[i+1:len(if2)]
+        n2, port2 = if2[0:i], if2[i+1:len(if2)]
         dpid2 = n2[n2.rindex("+")+1:]
 
-        cid = n1 + "_" + num1 + "_" + dpid2 + "_" + num2
-        logger.debug("cid=%s, node-id=%s, port-num1=%s, port-num2=%s" %
-                     (cid, n1, num1, num2,))
-        typee, cm_name = db_sync_manager.get_se_link_info(n1 + "_" + num1)
+        # Format of the link
+        # urn:publicid:IDN+fms:psnc:serm+link+<dpid1>_<p1>?vlan=X-<dpid2>_<p2>?vlan=Y
+#        cid = n1 + "_" + port1 + "-" + dpid2 + "_" + port2
+#        cid = "%s_%s-%s_%s" % (n1, port1, dpid2, port2)
+        cid = "%s_%s?vlan=%s-%s_%s?vlan=%s" % \
+            (n1, port1, vlan1, dpid2, port2, vlan2)
+
+        logger.debug("cid=%s, node-id=%s, vlan1=%s, vlan2=%s, \
+                     port-num1=%s, port-num2=%s" %
+                     (cid, n1, vlan1, vlan2, port1, port2,))
+        typee, cm_name = db_sync_manager.get_se_link_info(n1 + "_" + port1)
 
         l = SELink(cid, typee, cm_name, sliver=sliver_id)
-        l.add_interface_ref(if1, vlan1)
-        l.add_interface_ref(if2, vlan2)
+        l.add_interface_ref(if1)
+        l.add_interface_ref(if2)
         return l
 
     def __check_for_consistency(self, sdn_routing_key, tn_routing_key,
@@ -163,7 +171,7 @@ class SEUtils(CommonUtils):
         return True
 
     def __update_link(self, links, svalues, tvalues):
-#        added_links = []
+        # added_links = []
         for s in svalues:
             for sintf in s.get("internal_ifs"):
                 for t in tvalues:
@@ -269,16 +277,17 @@ class SEUtils(CommonUtils):
                 if l.get("routing_key") == key:
                     rspec.link(l)
 
-    def __update_link_with_vlantag(self, nodes, links):
-        ret = {}
-        for n in nodes:
-            for i in n.get('interfaces'):
-                for v in i.get('vlan'):
-                    ret[i.get('component_id')] = v.get('tag')
+    # NOTE: vlantag attribute not used anymore
+    # def __update_link_with_vlantag(self, nodes, links):
+    #     ret = {}
+    #     for n in nodes:
+    #         for i in n.get('interfaces'):
+    #             for v in i.get('vlan'):
+    #                 ret[i.get('component_id')] = v.get('tag')
 
-        for l in links:
-            for i in l.get('interface_ref'):
-                i['vlantag'] = ret.get(i.get('component_id'))
+    #     for l in links:
+    #         for i in l.get('interface_ref'):
+    #             i['vlantag'] = ret.get(i.get('component_id'))
 
     def manage_direct_allocate(self, surn, creds, end, nodes, links):
         route = {}
@@ -287,10 +296,11 @@ class SEUtils(CommonUtils):
         self.__update_link_route(route, links)
         logger.debug("Links(%d)=%s" % (len(links), links,))
 
-        # XXX_FIXME_XXX: the SERM requires a new field in the link attribute
+        # NOTE: vlantag attribute not used anymore
+        # The SERM requires a new field in the link attribute
         # (felix:vlan). This is not compatible with the GENI world...
-        self.__update_link_with_vlantag(nodes, links)
-        logger.warning("Updated Links(%d)=%s" % (len(links), links,))
+#        self.__update_link_with_vlantag(nodes, links)
+#        logger.warning("Updated Links(%d)=%s" % (len(links), links,))
 
         self.__update_direct_route_rspec(route, nodes, links)
         logger.info("Route=%s" % (route,))

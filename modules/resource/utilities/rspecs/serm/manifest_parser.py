@@ -9,7 +9,8 @@ logger = core.log.getLogger("utility-rspec")
 class SERMv3ManifestParser(SERMv3RequestParser):
     def __init__(self, from_file=None, from_string=None):
         super(SERMv3ManifestParser, self).__init__(from_file, from_string)
-        self.__sv = self.rspec.nsmap.get('sharedvlan')
+        # NOTE: sharedvlan namespace not used anymore
+#        self.__sv = self.rspec.nsmap.get('sharedvlan')
 
     def nodes(self):
         nodes = []
@@ -22,7 +23,7 @@ class SERMv3ManifestParser(SERMv3RequestParser):
             host = n.find("{%s}host" % (self.none))
             # For SERM manifest the host tag SHOULD be specified
             if host:
-                host_name = host.attrib.get('name')
+                host_name = host.attrib.get("name")
 
             node = SENode(n.attrib.get("client_id"),
                           n.attrib.get("component_manager_id"),
@@ -33,9 +34,10 @@ class SERMv3ManifestParser(SERMv3RequestParser):
 
             for i in n.iterfind("{%s}interface" % (self.none)):
                 interface = Interface(i.attrib.get("client_id"))
-                for sv in i.iterfind("{%s}link_shared_vlan" % (self.__sv)):
-                    interface.add_vlan(sv.attrib.get("vlantag"),
-                                       sv.attrib.get("name"))
+                # NOTE: sharedvlan namespace not used anymore
+#                for sv in i.iterfind("{%s}link_shared_vlan" % (self.__sv)):
+#                    interface.add_vlan(sv.attrib.get("vlantag"),
+#                                       sv.attrib.get("name"))
                 node.add_interface(interface.serialize())
 
             nodes.append(node.serialize())
@@ -65,10 +67,11 @@ class SERMv3ManifestParser(SERMv3RequestParser):
             [l_.add_interface_ref(i.attrib.get("client_id"))
              for i in l.iterfind("{%s}interface_ref" % (self.none))]
 
-            [l_.add_property(p.attrib.get("source_id"),
-                             p.attrib.get("dest_id"),
-                             p.attrib.get("capacity"))
-             for p in l.iterfind("{%s}property" % (self.none))]
+            # NOTE: property tag not used
+#            [l_.add_property(p.attrib.get("source_id"),
+#                             p.attrib.get("dest_id"),
+#                             p.attrib.get("capacity"))
+#             for p in l.iterfind("{%s}property" % (self.none))]
 
             links_.append(l_.serialize())
 

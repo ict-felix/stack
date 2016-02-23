@@ -22,6 +22,7 @@ class SELink(Link):
 
     def add_interface_ref(self, cid, vlan=None):
         interface_struct = {'component_id': cid}
+        # NOTE: vlantag attribute not used anymore
         if vlan is not None:
             interface_struct['vlantag'] = vlan
         self.link['interface_ref'].append(interface_struct)
