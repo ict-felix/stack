@@ -78,12 +78,14 @@ class GENIv3DelegateBase(object):
         super(GENIv3DelegateBase, self).__init__()
         self.config = FullConfParser()
         self.general_section = self.config.get("geniv3.conf").get("general")
-        self.certificates_section = self.config.get("auth.conf").get("certificates")
+        self.certificates_section = self.config.get("auth.conf").\
+            get("certificates")
 
     def get_request_extensions_list(self):
         """Not to overwrite by AM developer. Should retrun a list of request
         extensions (XSD schemas) to be sent back by GetVersion."""
-        return [uri for prefix, uri in self.get_request_extensions_mapping().items()]
+        return [uri for prefix, uri in
+                self.get_request_extensions_mapping().items()]
 
     def get_request_extensions_mapping(self):
         """Overwrite by AM developer. Should return a dict of namespace names
@@ -102,7 +104,8 @@ class GENIv3DelegateBase(object):
     def get_ad_extensions_list(self):
         """Not to overwrite by AM developer. Should retrun a list of request
         extensions (XSD schemas) to be sent back by GetVersion."""
-        return [uri for prefix, uri in self.get_ad_extensions_mapping().items()]
+        return [uri for prefix, uri in
+                self.get_ad_extensions_mapping().items()]
 
     def get_ad_extensions_mapping(self):
         """Overwrite by AM developer. Should return a dict of namespace names
@@ -131,7 +134,8 @@ class GENIv3DelegateBase(object):
         GAPI_AM_API_V3/CommonConcepts#OperationsonIndividualSlivers"""
         return 'geni_single'
 
-    def list_resources(self, client_cert, credentials, geni_available, inner_call=False):
+    def list_resources(self, client_cert, credentials,
+                       geni_available, inner_call=False):
         """Overwrite by AM developer. Shall return an RSpec version 3
         (advertisement) or raise an GENIv3...Error.
         If {geni_available} is set, only return availabe resources.
@@ -152,7 +156,8 @@ class GENIv3DelegateBase(object):
         GAPI_AM_API_V3#Describe"""
         raise exceptions.GENIv3GeneralError("Method not implemented yet")
 
-    def allocate(self, slice_urn, client_cert, credentials, rspec, end_time=None):
+    def allocate(self, slice_urn, client_cert, credentials,
+                 rspec, end_time=None):
         """Overwrite by AM developer.
         Shall return the two following values or raise an GENIv3...Error.
         - a RSpec version 3 (manifest) of newly allocated slivers
@@ -175,9 +180,11 @@ class GENIv3DelegateBase(object):
         GAPI_AM_API_V3#Allocate"""
         raise exceptions.GENIv3GeneralError("Method not implemented yet")
 
-    def renew(self, urns, client_cert, credentials, expiration_time, best_effort):
+    def renew(self, urns, client_cert, credentials, expiration_time,
+              best_effort):
         """Overwrite by AM developer.
-        Shall return a list of slivers of the following format or raise an GENIv3...Error:
+        Shall return a list of slivers of the following format or raise a
+        GENIv3...Error:
             [{'geni_sliver_urn'         : String,
               'geni_allocation_status'  : one of the ALLOCATION_STATE_xxx,
               'geni_operational_status' : one of the OPERATIONAL_STATE_xxx,
@@ -200,7 +207,8 @@ class GENIv3DelegateBase(object):
         GAPI_AM_API_V3#Renew"""
         raise exceptions.GENIv3GeneralError("Method not implemented yet")
 
-    def provision(self, urns, client_cert, credentials, best_effort, end_time, geni_users):
+    def provision(self, urns, client_cert, credentials, best_effort, end_time,
+                  geni_users):
         """Overwrite by AM developer.
         Shall return the two following values or raise an GENIv3...Error.
         - a RSpec version 3 (manifest) of slivers
@@ -254,7 +262,8 @@ class GENIv3DelegateBase(object):
         GAPI_AM_API_V3#Status"""
         raise exceptions.GENIv3GeneralError("Method not implemented yet")
 
-    def perform_operational_action(self, urns, client_cert, credentials, action, best_effort):
+    def perform_operational_action(self, urns, client_cert, credentials,
+                                   action, best_effort):
         """Overwrite by AM developer.
         Shall return a list of slivers of the following format or raise an
         GENIv3...Error:
@@ -316,34 +325,57 @@ class GENIv3DelegateBase(object):
     def auth(self, client_cert, credentials, slice_urn=None, privileges=()):
         """
         This method authenticates and authorizes.
-        It returns the client's urn, uuid, email (extracted from the {client_cert}). Example call: "urn, uuid, email = self.auth(...)"
-        Be aware, the email is not required in the certificate, hence it might be empty.
+        It returns the client's urn, uuid, email (extracted from the
+        {client_cert}). Example call: "urn, uuid, email = self.auth(...)"
+        Be aware, the email is not required in the certificate, hence
+        it might be empty.
         If the validation fails, an GENIv3ForbiddenError is thrown.
 
-        The credentials are checked so the user has all the required privileges (success if any credential fits all privileges).
-        The client certificate is not checked: this is usually done via the webserver configuration.
+        The credentials are checked so the user has all the required privileges
+        (success if any credential fits all privileges).
+        The client certificate is not checked: this is usually done via the
+        webserver configuration.
         This method only treats certificates of type 'geni_sfa'.
 
-        Here a list of possible privileges (format: right_in_credential: [privilege1, privilege2, ...]):
-            "authority" : ["register", "remove", "update", "resolve", "list", "getcredential", "*"],
+        Here a list of possible privileges (format: right_in_credential:
+            [privilege1, privilege2, ...]):
+            "authority" : ["register", "remove", "update", "resolve", "list",
+                           "getcredential", "*"],
             "refresh"   : ["remove", "update"],
             "resolve"   : ["resolve", "list", "getcredential"],
-            "sa"        : ["getticket", "redeemslice", "redeemticket", "createslice", "createsliver", "deleteslice", "deletesliver", "updateslice",
-                           "getsliceresources", "getticket", "loanresources", "stopslice", "startslice", "renewsliver",
-                            "deleteslice", "deletesliver", "resetslice", "listslices", "listnodes", "getpolicy", "sliverstatus"],
-            "embed"     : ["getticket", "redeemslice", "redeemticket", "createslice", "createsliver", "renewsliver", "deleteslice",
-                           "deletesliver", "updateslice", "sliverstatus", "getsliceresources", "shutdown"],
+            "sa"        : ["getticket", "redeemslice", "redeemticket",
+                           "createslice", "createsliver", "deleteslice",
+                           "deletesliver", "updateslice",
+                           "getsliceresources", "getticket", "loanresources",
+                           "stopslice", "startslice", "renewsliver",
+                           "deleteslice", "deletesliver", "resetslice",
+                           "listslices", "listnodes", "getpolicy",
+                           "sliverstatus"],
+            "embed"     : ["getticket", "redeemslice", "redeemticket",
+                           "createslice", "createsliver", "renewsliver",
+                           "deleteslice",
+                           "deletesliver", "updateslice", "sliverstatus",
+                           "getsliceresources", "shutdown"],
             "bind"      : ["getticket", "loanresources", "redeemticket"],
-            "control"   : ["updateslice", "createslice", "createsliver", "renewsliver", "sliverstatus", "stopslice", "startslice",
-                           "deleteslice", "deletesliver", "resetslice", "getsliceresources", "getgids"],
+            "control"   : ["updateslice", "createslice", "createsliver",
+                           "renewsliver", "sliverstatus", "stopslice",
+                           "startslice",
+                           "deleteslice", "deletesliver", "resetslice",
+                           "getsliceresources", "getgids"],
             "info"      : ["listslices", "listnodes", "getpolicy"],
-            "ma"        : ["setbootstate", "getbootstate", "reboot", "getgids", "gettrustedcerts"],
+            "ma"        : ["setbootstate", "getbootstate", "reboot",
+                           "getgids", "gettrustedcerts"],
             "operator"  : ["gettrustedcerts", "getgids"],
-            "*"         : ["createsliver", "deletesliver", "sliverstatus", "renewsliver", "shutdown"]
+            "*"         : ["createsliver", "deletesliver", "sliverstatus",
+                           "renewsliver", "shutdown"]
 
-        When using the gcf clearinghouse implementation the credentials will have the rights:
-        - user: "refresh", "resolve", "info" (which resolves to the privileges: "remove", "update", "resolve", "list", "getcredential", "listslices", "listnodes", "getpolicy").
-        - slice: "refresh", "embed", "bind", "control", "info" (well, do the resolving yourself...)
+        When using the gcf clearinghouse implementation the credentials
+        will have the rights:
+        - user: "refresh", "resolve", "info" (which resolves to the
+          privileges: "remove", "update", "resolve", "list",
+          "getcredential", "listslices", "listnodes", "getpolicy").
+        - slice: "refresh", "embed", "bind", "control", "info"
+          (well, do the resolving yourself...)
         """
         # check variables
         if not isinstance(privileges, tuple):
@@ -355,17 +387,23 @@ class GENIv3DelegateBase(object):
                 geni_credentials.append(c['geni_value'])
 
         # Get the cert_root from the configuration settings
-        root_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../../../"))
-        cert_root = os.path.join(root_path, self.certificates_section.get("cert_root"))
-        logger.debug("client_certificate trusted, present at: %s" % str(cert_root))
+        root_path = os.path.normpath(os.path.join(
+            os.path.dirname(__file__), "../../../../"))
+        cert_root = os.path.join(root_path, self.certificates_section.
+                                 get("cert_root"))
+        logger.debug("client_certificate trusted, present \
+            at: %s" % str(cert_root))
         logger.debug("client_certificate:\n%s" % str(client_cert))
 
         if client_cert is None:
-            raise exceptions.GENIv3ForbiddenError("Could not determine the client SSL certificate")
+            raise exceptions.GENIv3ForbiddenError("Could not determine \
+                the client SSL certificate")
         # test the credential
         try:
-            cred_verifier = extensions.geni.util.cred_util.CredentialVerifier(cert_root)
-            cred_verifier.verify_from_strings(client_cert, geni_credentials, slice_urn, privileges)
+            cred_verifier = extensions.geni.util.cred_util.\
+                CredentialVerifier(cert_root)
+            cred_verifier.verify_from_strings(
+                client_cert, geni_credentials, slice_urn, privileges)
         except Exception as e:
             raise exceptions.GENIv3ForbiddenError(str(e))
 
@@ -376,60 +414,82 @@ class GENIv3DelegateBase(object):
         return user_urn, user_uuid, user_email  # TODO document return
 
     def urn_type(self, urn):
-        """Returns the type of the urn (e.g. slice, sliver).
+        """
+        Returns the type of the urn (e.g. slice, sliver).
         For the possible types see: http://groups.geni.net/geni/wiki/
-        GeniApiIdentifiers#ExamplesandUsage"""
+        GeniApiIdentifiers#ExamplesandUsage
+        """
         return urn.split('+')[2].strip()
 
     def lxml_ad_root(self):
-        """Returns a xml root node with the namespace extensions specified by
-        self.get_ad_extensions_mapping."""
-        return etree.Element('rspec', self.get_ad_extensions_mapping(), type='advertisement')
+        """
+        Returns a xml root node with the namespace extensions specified by
+        self.get_ad_extensions_mapping.
+        """
+        return etree.Element('rspec', self.get_ad_extensions_mapping(),
+                             type='advertisement')
 
     def lxml_manifest_root(self):
-        """Returns a xml root node with the namespace extensions specified by
-        self.get_manifest_extensions_mapping."""
-        return etree.Element('rspec', self.get_manifest_extensions_mapping(), type='manifest')
+        """
+        Returns a xml root node with the namespace extensions specified by
+        self.get_manifest_extensions_mapping.
+        """
+        return etree.Element('rspec', self.get_manifest_extensions_mapping(),
+                             type='manifest')
 
     def lxml_to_string(self, rspec):
-        """Converts lxml root node to string (for returning to the client)."""
+        """
+        Converts lxml root node to string (for returning to the client).
+        """
         return etree.tostring(rspec, pretty_print=True)
 
     def lxml_ad_element_maker(self, prefix):
-        """Returns a lxml.builder.ElementMaker configured for avertisements
-        and the namespace given by {prefix}."""
+        """
+        Returns a lxml.builder.ElementMaker configured for avertisements
+        and the namespace given by {prefix}.
+        """
         ext = self.get_ad_extensions_mapping()
         return ElementMaker(namespace=ext[prefix], nsmap=ext)
 
     def lxml_manifest_element_maker(self, prefix):
-        """Returns a lxml.builder.ElementMaker configured for manifests and
-        the namespace given by {prefix}."""
+        """
+        Returns a lxml.builder.ElementMaker configured for manifests and
+        the namespace given by {prefix}.
+        """
         ext = self.get_manifest_extensions_mapping()
         return ElementMaker(namespace=ext[prefix], nsmap=ext)
 
     def lxml_parse_rspec(self, rspec_string):
-        """Returns a the root element of the given {rspec_string} as
+        """
+        Returns a the root element of the given {rspec_string} as
         lxml.Element.
         If the config key is set, the rspec is validated with the schemas
-        found at the URLs specified in schemaLocation of the the given RSpec."""
+        found at the URLs specified in schemaLocation of the the given RSpec.
+        """
         # parse
         rspec_root = etree.fromstring(rspec_string)
         # validate RSpec against specified schemaLocations
-        should_validate = ast.literal_eval(self.general_section.get("rspec_validation"))
+        should_validate = ast.literal_eval(
+            self.general_section.get("rspec_validation"))
 
         if should_validate:
-            schema_locations = rspec_root.get("{http://www.w3.org/2001/XMLSchema-instance}schemaLocation")
+            schema_locations = rspec_root.get(
+                "{http://www.w3.org/2001/XMLSchema-instance}schemaLocation")
             if schema_locations:
                 schema_location_list = schema_locations.split(" ")
-                schema_location_list = map(lambda x: x.strip(), schema_location_list)  # strip whitespaces
+                # Strip whitespaces
+                schema_location_list = map(lambda x: x.strip(),
+                                           schema_location_list)
                 for sl in schema_location_list:
                     try:
-                        xmlschema_contents = urllib2.urlopen(sl)  # try to download the schema
+                        # Try to download schema
+                        xmlschema_contents = urllib2.urlopen(sl)
                         xmlschema_doc = etree.parse(xmlschema_contents)
                         xmlschema = etree.XMLSchema(xmlschema_doc)
                         xmlschema.validate(rspec_root)
                     except Exception as e:
-                        logger.warning("RSpec validation failed (%s: %s)" % (sl, str(e),))
+                        logger.warning("RSpec validation failed (%s: %s)"
+                                       % (sl, str(e),))
             else:
                 logger.warning("RSpec does not specify any schema locations")
         return rspec_root

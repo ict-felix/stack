@@ -1,11 +1,14 @@
 import pprint
 
-COLORS={"reset":"\x1b[00m",
-    "blue":   "\x1b[01;34m",
-    "cyan":   "\x1b[01;36m",
-    "green":  "\x1b[01;32m",
+COLORS = {
+    "reset": "\x1b[00m",
+    "blue": "\x1b[01;34m",
+    "cyan": "\x1b[01;36m",
+    "green": "\x1b[01;32m",
     "yellow": "\x1b[01;33m",
-    "red":    "\x1b[01;05;37;41m"}
+    "red": "\x1b[01;05;37;41m"
+    }
+
 
 def print_call(method_name, params, res):
     # output stuff

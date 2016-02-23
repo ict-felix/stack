@@ -86,7 +86,8 @@ class GENIv3Delegate(GENIv3DelegateBase):
         return "geni_many"
 
     @trace_method_inputs
-    def list_resources(self, client_cert, credentials, geni_available, inner_call=False):
+    def list_resources(self, client_cert, credentials, geni_available,
+                       inner_call=False):
         """
         Shows a list with the slivers managed or seen by the resource manager.
 
@@ -108,8 +109,10 @@ class GENIv3Delegate(GENIv3DelegateBase):
         rspec = ROAdvertisementFormatter(schema_location=sl)
 
         try:
-            rspec = ROUtils.generate_list_resources(rspec, \
-                geni_available, self._interdomain_available_to_user, inner_call)
+            rspec = ROUtils.generate_list_resources(
+                rspec,
+                geni_available, self._interdomain_available_to_user,
+                inner_call)
         except Exception as e:
             raise geni_ex.GENIv3GeneralError(str(e))
 
@@ -214,28 +217,35 @@ class GENIv3Delegate(GENIv3DelegateBase):
         if self._mro_enabled:
             # No TN or SE nodes
             if CommonUtils.is_implicit_allocation(req_rspec):
-                logger.info("Implicit resource allocation: without SE, without TN")
-                rspec = TNUtils.add_tn_to_ro_request_rspec(req_rspec, SDNUtils(), VLUtils())
+                logger.info("Implicit resource allocation: without \
+                    SE, without TN")
+                rspec = TNUtils.add_tn_to_ro_request_rspec(
+                    req_rspec, SDNUtils(), VLUtils())
                 req_rspec = RORequestParser(from_string=rspec)
             if not CommonUtils.is_explicit_tn_allocation_orig(req_rspec):
-                # Before starting the allocation process, we need to find a proper
-                # mapping between TN and SDN resources in the islands.
+                # Before starting the allocation process, we need to find
+                # a proper mapping between TN and SDN resources at islands.
                 # We use the tn-links as starting point (STPs)
-                logger.info("Explicit resource allocation: without SE, with TN")
+                logger.info("Explicit resource allocation: without SE, \
+                    with TN")
                 dpid_port_ids = SDNUtils().find_dpid_port_identifiers(
                     req_rspec.of_groups(), req_rspec.of_matches())
                 logger.debug("DPIDs=%s" % (dpid_port_ids,))
-                #paths = TNUtils.find_interdomain_paths_from_tn_links(req_rspec.tn_links())
-                paths = TNUtils.find_interdomain_paths_from_tn_links_and_dpids(req_rspec.tn_links(), dpid_port_ids)
+                # paths = TNUtils.find_interdomain_paths_from_tn_links(
+                #    req_rspec.tn_links())
+                paths = TNUtils.find_interdomain_paths_from_tn_links_and_dpids(
+                    req_rspec.tn_links(), dpid_port_ids)
 
-                items, se_constraints = SDNUtils().analyze_mapped_path(dpid_port_ids, paths)
+                items, se_constraints = \
+                    SDNUtils().analyze_mapped_path(dpid_port_ids, paths)
                 extend_groups.extend(items)
             logger.warning("ReqRSpec must be extended with SDN-groups: %s" %
                            (extend_groups,))
 
         # Sequence: SDN, TN, SE, COM
-        ## First, the most blocking resources (inter-domain connections: TN, SE) will be requested 
-        ## If that succeeds, proceed to intra-domain resources (SDN, COM)
+        # > First, the most blocking resources (inter-domain
+        # connections: TN, SE) will be requested
+        # > If that succeeds, proceed to intra-domain resources (SDN, COM)
 
         # SDN resources
         se_sdn_info = None
@@ -328,6 +338,7 @@ class GENIv3Delegate(GENIv3DelegateBase):
                              (len(nodes), nodes,))
                 logger.debug("Found a SE-link segment (%d): %s" %
                              (len(links), links,))
+
                 if se_nodes_in_request:
                     (se_m_info, se_slivers, db_slivers) =\
                         SEUtils().manage_direct_allocate(
@@ -387,7 +398,8 @@ class GENIv3Delegate(GENIv3DelegateBase):
 
         logger.info("Allocate successfully completed: %s" % (ro_db_slivers,))
         self.__schedule_slice_release(end_time, ro_db_slivers)
-        self.__schedule_tnres_update(tn_resource_refresh, 1, "oneshot_tn_resource_refresh")
+        self.__schedule_tnres_update(
+            tn_resource_refresh, 1, "oneshot_tn_resource_refresh")
         return ("%s" % ro_manifest, ro_slivers)
 
     @trace_method_inputs
@@ -715,7 +727,8 @@ class GENIv3Delegate(GENIv3DelegateBase):
             db_sync_manager.delete_slice_sdn(slice_urn)
 
         db_sync_manager.delete_slice_urns(db_urns)
-        self.__schedule_tnres_update(tn_resource_refresh, 1, "oneshot_tn_resource_refresh")
+        self.__schedule_tnres_update(
+            tn_resource_refresh, 1, "oneshot_tn_resource_refresh")
         return ro_slivers
 
     @trace_method_inputs
@@ -768,6 +781,6 @@ class GENIv3Delegate(GENIv3DelegateBase):
     def __schedule_tnres_update(self, func, secs, name):
         scheduler = ROSchedulerService.get_scheduler()
         if scheduler is not None:
-            run =datetime.now() + timedelta(seconds=secs)
+            run = datetime.now() + timedelta(seconds=secs)
             ROSchedulerService.get_scheduler().add_job(
                 func, "date", run_date=run, id=name)

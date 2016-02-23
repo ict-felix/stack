@@ -10,11 +10,13 @@ class AllowedPeers:
 
     @staticmethod
     def get_peers_key():
-        return list(filter((lambda x: x.startswith("PEER_")), AllowedPeers.__dict__))
+        return list(filter((lambda x: x.startswith("PEER_")),
+                    AllowedPeers.__dict__))
 
     @staticmethod
     def get_peers_type():
-        return list(AllowedPeers.__dict__.get(x) for x in AllowedPeers.get_peers_key())
+        return list(AllowedPeers.__dict__.get(x) for x
+                    in AllowedPeers.get_peers_key())
 
     @staticmethod
     def get_peers():

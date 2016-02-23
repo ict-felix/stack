@@ -15,11 +15,14 @@ class VLUtils(CommonUtils):
         src_dom = ""
         dst_dom = ""
         try:
-            src_dom = self.get_domain_from_urn(link["interface_ref"][0]["component_id"])
-            dst_dom = self.get_domain_from_urn(link["interface_ref"][1]["component_id"])
-        except:
-             logger.warning("Some interface of virtual link is invalid.\n" \
-                 + "Virtual-link=%s. Details: %s" % (link, str(e)))
+            src_dom = self.get_domain_from_urn(
+                link["interface_ref"][0]["component_id"])
+            dst_dom = self.get_domain_from_urn(
+                link["interface_ref"][1]["component_id"])
+        except Exception as e:
+            logger.warning(
+                "Some interface of virtual link is invalid.\n"
+                + "Virtual-link=%s. Details: %s" % (link, str(e)))
         return (src_dom, dst_dom)
 
     @staticmethod
@@ -50,7 +53,8 @@ class VLUtils(CommonUtils):
                 dst_tn = path["dst"]["tn"]
                 is_gre = all(tn_utils.determine_stp_gre([src_tn, dst_tn]))
                 link_type = "gre" if is_gre else "nsi"
-                vl_base_urn = "urn:publicid:IDN+fms:{0}:mapper+domain".format(combined[0])
+                vl_base_urn = "urn:publicid:IDN+fms:{0}:mapper+domain".\
+                    format(combined[0])
                 src_urn = "%s+%s" % (vl_base_urn, combined[0])
                 dst_urn = "%s+%s" % (vl_base_urn, combined[1])
                 link = {"src_name": src_urn,

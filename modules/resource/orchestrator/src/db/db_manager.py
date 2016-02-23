@@ -620,8 +620,8 @@ class DBManager(object):
             for r in table.find():
                 for ifref in r.get("interface_ref"):
                     if ifref.get("component_id") == node_port_id:
-                        return r.get('link_type'), r.get('component_manager_name')
-
+                        return r.get('link_type'), \
+                            r.get('component_manager_name')
             return None, None
         finally:
             self.__mutex.release()
@@ -731,12 +731,13 @@ class DBManager(object):
 
     def get_tn_node_interface(self, filter_params={}):
         found_interfaces = []
-        tn_node = [ n for n in self.get_tn_nodes() ][0]
+        tn_node = [n for n in self.get_tn_nodes()][0]
         interfaces = tn_node["interfaces"]
         for interface in interfaces:
             # Find interfaces that meet all the filter parameters
-            if all(map(lambda x: x[1] in interface.get(x[0], None),
-                [ (k,v) for k,v in filter_params.iteritems() ])):
+            if all(map(lambda x: x[1] in
+                       interface.get(x[0], None),
+                       [(k, v) for k, v in filter_params.iteritems()])):
                 found_interfaces.append(interface)
         return found_interfaces
 

@@ -201,7 +201,7 @@ class GENIv3Client(SFAClient):
             err = "%s ListResources failure: %s" % (self.typee, str(e))
             raise exceptions.RPCError(err)
 
-    ## Helpers
+    # -- Helpers
 
     def __get_domain_urn_by_xmlrpcserver(self):
         """
@@ -209,13 +209,15 @@ class GENIv3Client(SFAClient):
         """
         domain_urn = ""
         try:
-            #am_version = str(self.geni_api_version)
-            #am_type = str(self.geni_type)
+            # am_version = str(self.geni_api_version)
+            # am_type = str(self.geni_type)
             # Look for case-independent 'am_type' and numeric 'am_type'
-            #am_type_re = re.compile(am_type)
-            #filter_params = {"am_version": int(am_version), "am_type": am_type_re}
+            # am_type_re = re.compile(am_type)
+            # filter_params = {"am_version": int(am_version),
+            #    "am_type": am_type_re}
             filter_params = {}
-            domain_urn = db_sync_manager.get_domain_urn_from_uri(self.uri, filter_params)
+            domain_urn = db_sync_manager.get_domain_urn_from_uri(
+                self.uri, filter_params)
 
         except Exception as e:
             logger.warning("get_domain_urn_from_uri failed: %s" % e)

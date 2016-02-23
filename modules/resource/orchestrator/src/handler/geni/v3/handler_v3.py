@@ -54,29 +54,33 @@ class GENIv3Handler(xmlrpc.Dispatcher):
             return self._errorReturn(e)
 
         request_rspec_versions = [
-            {"type": "geni", "version": 3,
-             "schema": "http://www.geni.net/resources/rspec/3/request.xsd",
-             "namespace": "http://www.geni.net/resources/rspec/3",
-             "extensions": request_extensions,
+            {
+                "type": "geni", "version": 3,
+                "schema": "http://www.geni.net/resources/rspec/3/request.xsd",
+                "namespace": "http://www.geni.net/resources/rspec/3",
+                "extensions": request_extensions,
             },
         ]
         ad_rspec_versions = [
-            {"type": "geni", "version": 3,
-             "schema": "http://www.geni.net/resources/rspec/3/ad.xsd",
-             "namespace": "http://www.geni.net/resources/rspec/3",
-             "extensions": ad_extensions,
+            {
+                "type": "geni", "version": 3,
+                "schema": "http://www.geni.net/resources/rspec/3/ad.xsd",
+                "namespace": "http://www.geni.net/resources/rspec/3",
+                "extensions": ad_extensions,
             },
         ]
-        credential_types = [ {"geni_type": "geni_sfa", "geni_version": 3} ]
+        credential_types = [{"geni_type": "geni_sfa", "geni_version": 3}]
 
         return self._successReturn(
-            {"geni_api": 3,
-             "geni_api_versions": {"3": "/xmlrpc/geni/3/"},  # absolute URL
-             "geni_request_rspec_versions": request_rspec_versions,
-             "geni_ad_rspec_versions": ad_rspec_versions,
-             "geni_credential_types": credential_types,
-             "geni_single_allocation": is_single_allocation,
-             "geni_allocate": allocation_mode,
+            {
+                "geni_api": 3,
+                # Absolute URL
+                "geni_api_versions": {"3": "/xmlrpc/geni/3/"},
+                "geni_request_rspec_versions": request_rspec_versions,
+                "geni_ad_rspec_versions": ad_rspec_versions,
+                "geni_credential_types": credential_types,
+                "geni_single_allocation": is_single_allocation,
+                "geni_allocate": allocation_mode,
             })
 
     def ListResources(self, credentials, options):
@@ -273,14 +277,15 @@ class GENIv3Handler(xmlrpc.Dispatcher):
                 # Get caller cert
                 caller_cert = super(GENIv3Handler, self).requestCertificate()
 
-                # Permissiosn for the calling method will be properly verified against creds
-                self.__credential_manager.validate_for(method_name, credentials, caller_cert)
+                # Permissiosn for calling method to be verified against creds
+                self.__credential_manager.validate_for(
+                    method_name, credentials, caller_cert)
             except Exception as e:
                 raise geni_ex.GENIv3GeneralError(str(e))
 
     def _interpret_geni_compress(self, result, options):
         # Read options to look for the value of geni_compress
-        geni_compress = self._option(options, "geni_compressed") 
+        geni_compress = self._option(options, "geni_compressed")
         # Compress result if client requests it
         if geni_compress:
             result = base64.b64encode(zlib.compress(str(result)))

@@ -43,8 +43,8 @@ class ROUtils(CommonUtils):
 
     def generate_internal_return(self, m):
         ret = {"com_nodes": [], "sdn_slivers": [],
-            "tn_nodes": [], "tn_links": [],
-            "se_nodes": [], "se_links": []}
+               "tn_nodes": [], "tn_links": [],
+               "se_nodes": [], "se_links": []}
 
         manifest = ROManifestParser(from_string=m)
         logger.debug("ROManifestParser=%s" % (manifest,))
@@ -76,7 +76,8 @@ class ROUtils(CommonUtils):
         return ret
 
     @staticmethod
-    def generate_list_resources(rspec, geni_available=False, show_interdomain=False, inner_call=True):
+    def generate_list_resources(rspec, geni_available=False,
+                                show_interdomain=False, inner_call=True):
         for n in db_sync_manager.get_com_nodes():
             logger.debug("COM resources node=%s" % (n,))
             rspec.com_node(n, inner_call)
@@ -98,14 +99,24 @@ class ROUtils(CommonUtils):
             logger.debug("OF resources fed-link=%s" % (l,))
             rspec.fed_link(l, inner_call)
 
-        # Internal use (M/RO) -- OR show inter-domain resources, through config flag
+        # Check for internal/external usage
+        ROUtils.list_resources_check_conds(
+            rspec, geni_available, show_interdomain, inner_call)
+
+        return rspec
+
+    @staticmethod
+    def list_resources_check_conds(rspec, geni_available=False,
+                                   show_interdomain=False, inner_call=True):
+        # Internal use (M/RO)
+        # > OR show inter-domain resources, through config flag
         if inner_call or show_interdomain:
             ROUtils.generate_list_resources_internal(rspec, inner_call)
 
-        # External use (experimenter) -- OR show inter-domain resources, through config flag
+        # External use (experimenter)
+        # > OR show inter-domain resources, through config flag
         if geni_available or show_interdomain:
             ROUtils.generate_list_resources_external(rspec, inner_call)
-        return rspec
 
     @staticmethod
     def generate_list_resources_internal(rspec, inner_call=True):

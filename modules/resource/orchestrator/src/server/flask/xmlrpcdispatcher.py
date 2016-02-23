@@ -1,16 +1,23 @@
 from flask import request
 
+
 class XMLRPCDispatcher(object):
-    """Please see documentation in FlaskXMLRPC."""
+    """
+    Please see documentation in FlaskXMLRPC.
+    """
     def __init__(self, log):
         self._log = log
 
     def requestCertificate(self):
-        """Retrieve the certificate which the client has sent."""
-        # get it from the request"s environment
-        if request.environ.has_key("CLIENT_RAW_CERT"): # check nginx
+        """
+        Retrieve the certificate which the client has sent.
+        """
+        # Get cert from the request's environment
+        # NGINX
+        if "CLIENT_RAW_CERT" in request.environ.keys():
             return request.environ["CLIENT_RAW_CERT"]
-        if request.environ.has_key("SSL_CLIENT_CERT"): # check apache
+        # Apache
+        if "SSL_CLIENT_CERT" in request.environ.keys():
             return request.environ["SSL_CLIENT_CERT"]
         return None
 

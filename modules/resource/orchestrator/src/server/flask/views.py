@@ -7,12 +7,12 @@ import methods
 ro_flask_views = Blueprint("ro_flask_views", __name__)
 
 
-@ro_flask_views.route("/", methods = ["GET"])
+@ro_flask_views.route("/", methods=["GET"])
 def homepage():
-    return render_template("index.html",
-        db=current_app.db)
+    return render_template("index.html", db=current_app.db)
 
-@ro_flask_views.route("/db/peers", methods = ["GET"])
+
+@ro_flask_views.route("/db/peers", methods=["GET"])
 @methods.check_cli_user_agent
 def db_peers():
     try:
@@ -21,7 +21,8 @@ def db_peers():
     except Exception as e:
         return "Error: %s" % str(e)
 
-@ro_flask_views.route("/db/vlans/used/tn", methods = ["GET"])
+
+@ro_flask_views.route("/db/vlans/used/tn", methods=["GET"])
 @methods.check_cli_user_agent
 def db_tn_vlans():
     try:
@@ -30,11 +31,13 @@ def db_tn_vlans():
     except Exception as e:
         return "Error: %s" % str(e)
 
-@ro_flask_views.route("/gui/peers", methods = ["GET"])
+
+@ro_flask_views.route("/gui/peers", methods=["GET"])
 @methods.check_gui_user_agent
 def gui_peers():
     try:
         output = methods.get_peers()
-        return render_template("peers.html", db=current_app.db, domain_routing=output)
+        return render_template(
+            "peers.html", db=current_app.db, domain_routing=output)
     except Exception as e:
         return "Error: %s" % str(e)
