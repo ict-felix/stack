@@ -34,6 +34,7 @@ class seConfigurator:
         self.capacity = initial_config["capacity"]
         self.dpid = initial_config["dpid"]
 
+        
     def convert_config_into_Resources_datamodel(self, config):
         rm_datamodel = {}
         for interface in config:

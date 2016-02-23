@@ -97,25 +97,87 @@ class seSlicesWithSlivers(object):
             # Check if there is "felix:vlan" in link request
             if sliceVlansPairs != None:
                 component_id = l["component_id"]
-                for vlanPairs in sliceVlansPairs:
-                    _client_id, _in_interface, _out_interface = vlanPairs
-                    if _client_id == component_id:
+                print "HHHHHHH: ", component_id
+                print "HAHAHAH: ", sliceVlansPairs
+                # Check if the urn is in old or new format
+                #if "?" not in component_id or "port_id" in component_id:
+                # TODO: Rethink ths UGLY comaprison
+                if ("?vlan=" not in component_id) and ("port_id" in sliceVlansPairs[0][1]):
+                    print ">>> Old RSpec version"
+                    for vlanPairs in sliceVlansPairs:
+                        _client_id, _in_interface, _out_interface = vlanPairs
+                        if _client_id == component_id:
+                            _in_vlan = _in_interface["vlan"]
+                            _in_port = _in_interface["port_id"].split("_")[-1]
+                            _out_vlan = _out_interface["vlan"]
+                            _out_port = _out_interface["port_id"].split("_")[-1]
+                        l['__vlan_pairs__'] = [_in_port, _in_vlan, _out_port, _out_vlan] 
+
+                    l['vlantag'] = _in_vlan + "-" + _out_vlan
+                    sliver_id_name = l["component_id"] + "_" + _in_vlan + "_" + _out_vlan
+
+                    sliver_id_name = sliver_id_name.replace("datapath", "sliver")
+                    l['sliver_id'] = sliver_id_name
+
+                    se_manifest.link(l)
+                else:
+                    print ">>> New RSpec version"
+                    for vlanPairs in sliceVlansPairs:
+                        _client_id, _in_interface, _out_interface = vlanPairs
+
+                        # if _client_id == component_id:
                         _in_vlan = _in_interface["vlan"]
-                        _in_port = _in_interface["port_id"].split("_")[-1]
+                        try:
+                            _in_port = _in_interface["port_id"].split("_")[-1]
+                        except:
+                            _in_port = _in_interface["port"].split("_")[-1]
                         _out_vlan = _out_interface["vlan"]
-                        _out_port = _out_interface["port_id"].split("_")[-1]
-                    l['__vlan_pairs__'] = [_in_port, _in_vlan, _out_port, _out_vlan] 
+                        try:
+                            _out_port = _out_interface["port_id"].split("_")[-1]
+                        except:
+                            _out_port = _out_interface["port"].split("_")[-1]
 
-                l['vlantag'] = _in_vlan + "-" + _out_vlan
-                sliver_id_name = l["component_id"] + "_" + _in_vlan + "_" + _out_vlan
-                sliver_id_name = sliver_id_name.replace("datapath", "sliver")
-                l['sliver_id'] = sliver_id_name
+                        # Mega hack checkout, shame on me:
+                        if ("vlan=" + _in_vlan) in component_id and \
+                            ("vlan=" + _out_vlan) in component_id and \
+                            ("_" + _in_port + "?") in component_id and \
+                            ("_" + _out_port + "?") in component_id:
+                            l['__vlan_pairs__'] = [_in_port, _in_vlan, _out_port, _out_vlan] 
 
-                se_manifest.link(l)
+                            l['vlantag'] = _in_vlan + "-" + _out_vlan
+
+                            # Converting the new format into the old one
+
+                            vlanTranslateData = l["component_id"].split("+")[-1]
+                            (src, dst) = vlanTranslateData.split("-")
+
+                            prefix = l["component_id"].rsplit('+', 1)[0]
+
+                            ### Parse source dpid ###
+                            srcDpid = src.split("?")[0].split("_")[0]
+                            srcPort = src.split("?")[0].split("_")[1]
+                            srcVlan = src.split("?")[1].split("=")[-1]
+
+                            ### Parse destination pdpid ###
+                            dstDpid = dst.split("?")[0].split("_")[0]
+                            dstPort = dst.split("?")[0].split("_")[1]
+                            dstVlan = dst.split("?")[1].split("=")[-1]
+
+                            sliver_id_name = prefix + "+" + srcDpid + "_" + _in_port + "_" + dstDpid + "_" + _out_port
+
+                            l['component_id'] = sliver_id_name
+
+                            sliver_id_name += "_" + srcVlan + "_" + dstVlan
+
+                            sliver_id_name = sliver_id_name.replace("datapath", "sliver")
+                            l['sliver_id'] = sliver_id_name
+
+                    se_manifest.link(l)
+
             else:
                 raise Exception("Slice has been created. Error in creating Manifest. Missing 'felix:vlan' parameter or no VLAN parameter in RSpec request.")
             
-    def _allocate_ports_in_slice(self, nodes):
+    def _allocate_ports_in_slice(self, nodes, sliceVlansPairs=None, slice_urn=None):
         ports_take_part_info={'ports':[]}
         for n in nodes:
             for e in n['interfaces']:
@@ -123,5 +185,31 @@ class seSlicesWithSlivers(object):
                     current_vlan = vlan['tag']
                     current_port = e['component_id']
                     ports_take_part_info['ports'].append({'port' : current_port, 'vlan' : current_vlan})
+        if not ports_take_part_info['ports']:
+            if sliceVlansPairs != None:
+                print "#### Getting VLANs from new format Rspec"
+                for port in sliceVlansPairs:
+                    for item in port:
+                        if isinstance(item,dict):
+                            try:
+                                item["port"] = item.pop("port_id")
+                            except:
+                                pass
+                            ports_take_part_info['ports'].append(item)
+            else:
+                # Get from DB
+                try:
+                    slice_resources=db_sync_manager.get_slices(slice_urn)
+                    vlan_pairs_db = slice_resources["vlan-pairs"]
+                    for port in vlan_pairs_db:
+                        for item in port:
+                            if isinstance(item,dict):
+                                # try:
+                                #     item["port"] = item.pop("port_id")
+                                # except:
+                                #     pass
+                                ports_take_part_info['ports'].append(item)
+                except:
+                    raise Exception("No data on the selected slice avaialble in database!")
         return ports_take_part_info
         

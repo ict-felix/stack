@@ -157,7 +157,7 @@ class GENIv3Delegate(GENIv3DelegateBase):
                     client_urn, client_uuid, client_email,))
 
             links_db, nodes, links = self.SESlices.get_link_db(urn)
-            self.SESlices._create_manifest_from_req_n_and_l(se_manifest, nodes,links)
+            self.SESlices._create_manifest_from_req_n_and_l(se_manifest, nodes,links) # TODO: check this, seems like bug
 
             result.append( 
                             {   
@@ -202,16 +202,15 @@ class GENIv3Delegate(GENIv3DelegateBase):
         se_manifest, se_slivers, se_db_slivers = SERMv3ManifestFormatter(), [], []
         
         links = req_rspec.links()
-        nodes = req_rspec.nodes()
+        print ">>>> links: ", links
+        nodes = req_rspec.nodes(links=links)
 
         # Workaround for "1:n" case: Get Vlan pairs from link->felix:vlan param
         sliceVlansPairs = req_rspec.getVlanPairs()
 
         # check if the requested resources (ports, vlans) are available
-        reservation_ports = self.SESlices._allocate_ports_in_slice(nodes)
+        reservation_ports = self.SESlices._allocate_ports_in_slice(nodes, sliceVlansPairs)
         availability_result = self.SEResources.check_available_resources(reservation_ports['ports'])
-
-        # print "WWWW: ", self.SEResources.get_port_mapping()
 
         if availability_result != False:
 
@@ -229,7 +228,10 @@ class GENIv3Delegate(GENIv3DelegateBase):
             self.SESlices._create_manifest_from_req_n_and_l(se_manifest, nodes,links, sliceVlansPairs)
             logger.debug("SE-ManifestFormatter=%s" % (se_manifest,))
 
-            s =  self.SESlices._allocate_ports_in_slice(nodes) 
+            print ">>> nodes: ", nodes
+            print ">>> sliveVlanPairs: ", sliceVlansPairs
+
+            s =  self.SESlices._allocate_ports_in_slice(nodes, sliceVlansPairs) 
                         
             self.SESlices.set_link_db(slice_urn, end_time,links, nodes, sliceVlansPairs)
             
@@ -311,7 +313,8 @@ class GENIv3Delegate(GENIv3DelegateBase):
             links_db, nodes, links = self.SESlices.get_link_db(urn)
             sliceVlansPairs = self.SESlices.get_slice_vlan_pairs(urn)
             self.SESlices._create_manifest_from_req_n_and_l(se_manifest, nodes,links, sliceVlansPairs)
-            reservation_ports = self.SESlices._allocate_ports_in_slice(nodes)["ports"]
+            # reservation_ports = self.SESlices._allocate_ports_in_slice(nodes)["ports"]
+            reservation_ports = self.SESlices._allocate_ports_in_slice(nodes=nodes, slice_urn=urn)["ports"]
 
             if end_time != None:
                 alarm_time = end_time
@@ -477,7 +480,7 @@ class GENIv3Delegate(GENIv3DelegateBase):
             except Exception as e:
                 raise geni_ex.GENIv3GeneralError("Slice does not exist.")
 
-            reservation_ports = self.SESlices._allocate_ports_in_slice(nodes)["ports"]
+            reservation_ports = self.SESlices._allocate_ports_in_slice(nodes=nodes, slice_urn=urn)["ports"]
 
             portsVlansPairs = getPortsVlansPairs(links_db)
 
@@ -538,6 +541,16 @@ class GENIv3Delegate(GENIv3DelegateBase):
             raise geni_ex.GENIv3GeneralError("RSpec validation failure: %s" % (
                                              error,))
         logger.info("Validation success!")
+
+    def __datetime2str(self, dt):
+        return dt.strftime("%Y-%m-%d %H:%M:%S.%fZ")
+
+    def __str2datetime(self, strval):
+        result = dateparser.parse(strval)
+        if result:
+            result = result - result.utcoffset()
+            result = result.replace(tzinfo=None)
+        return result
 
     def __update_slivers(self, urn, dict_slivers):
         slices = db_sync_manager.get_slices(urn)
