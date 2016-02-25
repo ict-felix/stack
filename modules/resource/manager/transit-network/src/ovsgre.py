@@ -619,11 +619,11 @@ class OvsManager:
             try:
                 ### setup dst->src
                 self.setup_tunnel(self.dst_if, self.src_if)
-            except Exeption as ex:
+            except Exception as ex:
                 ### teardown tunnel by setup_tunnel(self.src_if, self.dst_if)
                 try:
                     self.teardown_tunnel(self.src_if, self.dst_if)
-                except Exeption as eex:
+                except Exception as eex:
                     logger.error("provision: teardown_tunnel ex1=%s ex2=%s" % 
                                  ex, eex)
                 raise ex

@@ -389,7 +389,9 @@ class Request:
     def get_status(self):
         status = []
         for urn in self.urns:
-            r = self.dict_reservations[urn]
+            # r = self.dict_reservations[urn]
+            r = self.get_reservation(urn)
+            logger.info("get_logger:urn=%s, resv=%s" % (urn, r))
             s = {}
             if r.error is None:
                 s = {
@@ -577,7 +579,7 @@ class Reservation:
         return "%s%s" % (node, link)
 
     def __str__(self):
-        s = "Reservation: %s/%s,%s/vlan=%s/%s/bw=%s, %s/vlan=%s/%s/bw=%s" % (self.slice_urn, self.urn, self.path.sep.stp, self.path.sep.vlantag, self.src_vlan, self.path.sd_bw, self.path.dep.stp, self.path.dep.vlantag, self.dst_vlan, self.path.ds_bw)
+        s = "Reservation: %s/%s,%s/vlan=%s/%s/bw=%s, %s/vlan=%s/%s/bw=%s, error=%s" % (self.slice_urn, self.urn, self.path.sep.stp, self.path.sep.vlantag, self.src_vlan, self.path.sd_bw, self.path.dep.stp, self.path.dep.vlantag, self.dst_vlan, self.path.ds_bw, self.error)
 
         # start = datetime(1970, 1, 1) + timedelta(self.start_time/(3600*24), self.start_time%(3600*24))
         # end = datetime(1970, 1, 1) + timedelta(self.end_time/(3600*24), self.end_time%(3600*24))

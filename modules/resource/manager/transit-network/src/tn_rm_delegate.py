@@ -666,7 +666,10 @@ class TNRMGENI3Delegate(GENIv3DelegateBase):
                     logger.info("Unknown operation action(%s)." % (action))
                     resv.error = "Unknown operation action(%s)." % (action)
 
-            self.db.update(resv)
+            if resv.error is None:
+                self.db.update(resv)
+            else:
+                logger.info("Error in action(%s)." % (resv.error))
 
         slice_status = req.get_status()
         req.clear_error_status()
@@ -684,11 +687,11 @@ class TNRMGENI3Delegate(GENIv3DelegateBase):
                 continue
             if urn in dict_slice_urn:
                 req = dict_slice_urn[urn]
-                self.__slice_operational_status(req, action)
+                slice_status = self.__slice_operational_status(req, action)
             else:
                 logger.info("urn (%s) is not in dict_slice_urn." % (urn)) 
 
-        slice_status = self.__slice_status(urns)
+        # slice_status = self.__slice_status(urns)
 
         return slice_status
 
