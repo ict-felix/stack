@@ -1,6 +1,7 @@
 #! /bin/bash
 #
-ORGDIR=/home/okazaki/AMsoil/tnrm/src/vendor/tnrm
+#ORGDIR=/home/okazaki/AMsoil/tnrm/src/vendor/tnrm
+ORGDIR=/home/okazaki/eiSoil/src/vendor/tnrm
 
 for f in *.py ; do
     echo $f
