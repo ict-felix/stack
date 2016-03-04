@@ -137,6 +137,10 @@ class Request:
         resv.urn = urn
 
     def parse_reservations(self):
+        domain_id = config.get_domain_id()
+        stp_head = "urn:publicid:IDN+fms:%s:tnrm+stp+" % domain_id
+        print "domain=%s" % stp_head
+
         index = 0
         rspec = fromstring(self.request)
         # tree = parse(self.request)

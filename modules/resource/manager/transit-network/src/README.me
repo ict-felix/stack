@@ -105,8 +105,11 @@ See http://osrg.github.io/ryu.
 Please read eiSoil document.
 
 2.2 config.xml
-TN-RM must describe the end point of felix in the $TNRMconfig.xml.
+TN-RM must describe the end point of felix in the $TNRM/config.xml.
 The format is as follows:
+
+    if your domain id,
+    <domain domain_id="aist"/>
 
     if NSIv2 end point,
     <interface felix_domain_id="urn:publicid:IDN+fms:aist:tnrm+stp"

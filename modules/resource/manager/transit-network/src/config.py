@@ -56,6 +56,14 @@ class Config:
         elem = tree.getroot()
         
         # elem = elem.find("resources")
+        self.domain_id = "aist"
+        try:
+            elem_d = elem.find("domain")
+            self.domain_id = elem_d.get("domain_id")
+            logger.info("domain_id: %s" % self.domain_id)
+        except Exception as e:
+            logger.info("no domain_id. set to default domain: %s" % self.domain_id)
+        
         for node in elem.findall("node"):
             component_id = node.get("component_id")
             manager_id = node.get("component_manager_id")
@@ -105,6 +113,9 @@ class Config:
                     cinterface.set(gre_type, gre_address, gre_dpid, gre_ovsdb, gre_ryu, gre_sedev)
                     # print "**** %s" % (cinterface)
                 dict_felix_stps[cinterface.component_id] = cinterface
+
+    def get_domain_id(self):
+        return self.domain_id
 
     def get_advertisement(self):
         s = advertisement_rspec

@@ -15,6 +15,10 @@
 -->
 
 <resources>
+      <!--     -->
+      <domain domain_id="aist"/>
+      <!--     -->
+
       <node component_id="urn:publicid:IDN+fms:aist:tnrm+stp"
             component_manager_id="urn:publicid:IDN+fms:aist:tnrm+authority+cm"
             exclusive="false">
@@ -224,4 +228,5 @@
 		   ryu="http://150.254.160.129:8080"
 		   />
       </node>
+
 </resources>
