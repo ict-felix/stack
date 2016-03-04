@@ -52,8 +52,8 @@ mySQLtable = '''
         geni_action                     varchar(1024),
 
         start_time                      varchar(80),
-        manifest_node                   varchar(1024),
-        manifest_link                   varchar(1024),
+        manifest_node                   varchar(4096),
+        manifest_link                   varchar(4096),
 
         INDEX(slice_urn),
         INDEX(resv_urn),
