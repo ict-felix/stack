@@ -141,7 +141,17 @@ class TNRMGENI3Delegate(GENIv3DelegateBase):
         self.advertisement = self.adv.get_advertisement()
         rspec = self.advertisement
         logger.info("advertisement=%s" % (rspec))
+
+        self.list_urn()
         return "%s" % (rspec)
+
+    def list_urn(self):
+        for slice_urn in dict_slice_urn:
+            req = dict_slice_urn[slice_urn]
+            for urn in req.urns:
+                resv = req.get_reservation(urn)
+                logger.info("list service=%s: slice=%s, urn=%s, reservation=%s, status=%s" % 
+                            (resv.service, slice_urn, urn, resv, resv.astatus))
 
     def re_allocate(self, slice_urn, urn, rspec, start_time, end_time, rid, 
                     tvlan, s_opration, s_allocation, s_error, s_action):
@@ -250,7 +260,7 @@ class TNRMGENI3Delegate(GENIv3DelegateBase):
             req = dict_slice_urn[slice_urn]
             for urn in req.urns:
                 resv = req.get_reservation(urn)
-                logger.info("delete service=%s: urn=%s, reservation=%s, status=%s" % 
+                logger.info("exist service=%s: urn=%s, reservation=%s, status=%s" % 
                             (resv.service, urn, resv, resv.astatus))
             raise geni_ex.GENIv3GeneralError("slice_urn(%s) is already exit." % (slice_urn))
 
