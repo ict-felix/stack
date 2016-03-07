@@ -318,7 +318,7 @@ class TNUtils(CommonUtils):
                 #     % ("tn"))
                 tn_link = slice_mon_tree.xpath(
                     "topology//link[@type='tn'][contains(@id, 'urn')]")
-                if tn_link is None:
+                if tn_link is None or len(tn_link) == 0:
                     break
 
                 # Retrieve SRC and DST STP endpoints and their associated VLAN
@@ -376,15 +376,19 @@ class TNUtils(CommonUtils):
             if k == "vlan":
                 vlans = CommonUtils.process_range_and_set_values(
                     node[k][0]["description"])
-                contained = True
+                # A) Search for suitable (available) VLANs until found or
+                # "all" the range (having randomness in mind) is examined
+                # - For this, check slice monitoring info
+                # contained = True
                 max_iter = int(len(vlans)-1)
-                # Search for suitable (available VLANs) until found or "all"
-                # the range (having randomness in mind) has been examined
-                while contained and num_iter <= max_iter:
-                    idx_vlan = CommonUtils.get_random_list_position(max_iter)
-                    vlan = vlans[idx_vlan]
-                    contained, intersect = TNUtils.check_vlan_is_in_use(vlan)
-                    num_iter += 1
+                # while contained and num_iter <= max_iter:
+                #     idx_vlan = CommonUtils.get_random_list_position(max_iter)
+                #     vlan = vlans[idx_vlan]
+                #     contained, intersect = TNUtils.check_vlan_is_in_use(vlan)
+                #     num_iter += 1
+                # B) Choose from list of available VLANs from TNRM
+                idx_vlan = CommonUtils.get_random_list_position(max_iter)
+                vlan = vlans[idx_vlan]
                 new_node[k] = [{"tag": str(vlan), "name": "%s+vlan" % dom}]
             else:
                 new_node[k] = node[k]
@@ -524,6 +528,8 @@ class TNUtils(CommonUtils):
             m = "Could not obtain TN resources from SDN and VL resources. \
                 Details: %s" % str(e)
             logger.warning(m)
+            import traceback
+            traceback.print_exc()
 
         tnrm_formatter = TNRMv3RequestFormatter()
         for n in tn_nodes:
