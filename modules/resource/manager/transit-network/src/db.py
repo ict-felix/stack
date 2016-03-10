@@ -340,9 +340,24 @@ class tnrm_db:
 
             current_time = datetime.datetime.utcnow()
             ic_time = unix_time_sec(current_time)
-            is_datetime = datetime.datetime.strptime(d["start_time"], '%Y-%m-%d %H:%M:%S.%f')
+            try:
+                is_datetime = datetime.datetime.strptime(d["start_time"], '%Y-%m-%d %H:%M:%S.%f')
+            except Exception as e:
+                try:
+                    is_datetime = datetime.datetime.strptime(d["start_time"], '%Y-%m-%d %H:%M:%S')
+                except Exception as ee:
+                    logger.error("restart db: bad start time format: %s" % d["start_time"])
+                    continue
             is_time = unix_time_sec(is_datetime)
-            ie_datetime = datetime.datetime.strptime(d["geni_expires"], '%Y-%m-%d %H:%M:%S.%f')
+
+            try:
+                ie_datetime = datetime.datetime.strptime(d["geni_expires"], '%Y-%m-%d %H:%M:%S.%f')
+            except Exception as e:
+                try:
+                    ie_datetime = datetime.datetime.strptime(d["geni_expires"], '%Y-%m-%d %H:%M:%S')
+                except Exception as ee:
+                    logger.error("restart db: bad start time format: %s" % d["geni_expires"])
+                    continue
             ie_time = unix_time_sec(ie_datetime)
 
             # logger.info("start_time:   %s, %d" % (d["start_time"], is_time))
