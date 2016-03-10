@@ -148,6 +148,7 @@ class TNRMGENI3Delegate(GENIv3DelegateBase):
     def list_urn(self):
         for slice_urn in dict_slice_urn:
             req = dict_slice_urn[slice_urn]
+            logger.info("slice_urn=%s" % (slice_urn))
             for urn in req.urns:
                 resv = req.get_reservation(urn)
                 logger.info("list service=%s: slice=%s, urn=%s, reservation=%s, status=%s" % 
