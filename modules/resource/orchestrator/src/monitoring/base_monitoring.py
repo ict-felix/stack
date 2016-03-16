@@ -98,13 +98,14 @@ class BaseMonitoring(object):
 
         # XXX: (M)MS assumes one TNRM per island
         # With this, (M)MS receives at least one TNRM per island
-        type_resource_peer_tnrm = self.urn_type_resources_variations.get("tnrm")
+        type_resource_peer_tnrm = \
+            self.urn_type_resources_variations.get("tnrm")
         for peer in self.peers:
             filter_params = {"_ref_peer": peer.get("_id")}
             domain_peer = db_sync_manager.get_domain_info(filter_params)
             peer_domain_urn = domain_peer.get("domain_urn")
-            peer_is_tnrm = any([rt in peer_domain_urn for rt
-                in type_resource_peer_tnrm])
+            peer_is_tnrm = any(
+                [rt in peer_domain_urn for rt in type_resource_peer_tnrm])
             # MRO: TNRM added at this level. Use information from peer to add
             # it as a TNRM per domain
             if peer_is_tnrm:
@@ -120,7 +121,7 @@ class BaseMonitoring(object):
                 peer = self.monitoring_system
 
             url = "%s:%s/%s" % (peer.get("address"),
-                                     peer.get("port"), peer.get("endpoint"))
+                                peer.get("port"), peer.get("endpoint"))
             # Post-process URL to remove N slashes in a row
             url = re.sub("/{2,}", "/", url)
             # And add protocol (with 2 slashes)
@@ -130,8 +131,8 @@ class BaseMonitoring(object):
 
             # NOTE This may require certificates or BasicAuth at some point
             reply = requests.post(url=url,
-                                 headers={"Content-Type": "application/xml"},
-                                 data=xml_data).text
+                                  headers={"Content-Type": "application/xml"},
+                                  data=xml_data).text
             logger.info("Reply=%s" % (reply,))
 
         except Exception as e:
@@ -144,7 +145,7 @@ class BaseMonitoring(object):
     def set_topology_tree(self, topology_list_tree):
         # Return whole list of topologies
         try:
-            # If the following line works, 'topology_list_tree' is a proper xml tree
+            # If following line works, 'topology_list_tree' is an xml tree
             etree.tostring(topology_list_tree)
             self.topology_list = topology_list_tree
         except:
@@ -160,7 +161,8 @@ class BaseMonitoring(object):
 
     def get_topology_pretty(self):
         # XML not in proper format: need to convert to lxml, then pretty-print
-        return etree.tostring(etree.fromstring(self.get_topology()), pretty_print=True)
+        return etree.tostring(
+            etree.fromstring(self.get_topology()), pretty_print=True)
 
     def flush_topology(self):
         # Create a new sub-element of the list of topologies
@@ -177,18 +179,24 @@ class BaseMonitoring(object):
     ##########
 
     def _update_topology_name(self):
-        filter_string = "[@last_update_time='%s']" % str(self.domain_last_update)
-        filtered_nodes = self.get_topology_tree().xpath("//topology%s" % filter_string)
+        filter_string = "[@last_update_time='%s']" % \
+            str(self.domain_last_update)
+        filtered_nodes = self.get_topology_tree().xpath(
+            "//topology%s" % filter_string)
         # There should only be one
         filtered_nodes[0].set("name", str(self.domain_urn))
-        self.get_topology_tree().xpath("//topology%s" % filter_string)[0].set("name", str(self.domain_urn))
+        self.get_topology_tree().xpath(
+            "//topology%s" % filter_string)[0].set(
+            "name", str(self.domain_urn))
 
-    def _remove_empty_topologies(self, filter_name=None, filter_update_time=None):
+    def _remove_empty_topologies(self, filter_name=None,
+                                 filter_update_time=None):
         filter_string = ""
         if filter_name:
             filter_string += "[@name='%s']" % str(filter_name)
         if filter_update_time:
-            filter_string += "[@last_update_time='%s']" % str(filter_update_time)
+            filter_string += "[@last_update_time='%s']" % \
+                str(filter_update_time)
         topology_tree = etree.fromstring(self.get_topology())
         filtered_nodes = topology_tree.xpath("//topology%s" % filter_string)
         for filtered_node in filtered_nodes:
@@ -232,8 +240,10 @@ class BaseMonitoring(object):
                                     % parent_node.get("id"))
                 address.text = conf_data.get(parent_node.get("id")).get("ip")
                 port.text = conf_data.get(parent_node.get("id")).get("port")
-                auth_id.text = conf_data.get(parent_node.get("id")).get("snmp").get("id")
-                auth_pass.text = conf_data.get(parent_node.get("id")).get("snmp").get("password")
+                auth_id.text = conf_data.get(parent_node.get("id")).\
+                    get("snmp").get("id")
+                auth_pass.text = conf_data.get(parent_node.get("id")).\
+                    get("snmp").get("password")
         except Exception as e:
             logger.warning("Physical monitoring. Cannot add management data \
             on '%s'. Details: %s" % (etree.tostring(parent_node), e))
@@ -263,16 +273,18 @@ class BaseMonitoring(object):
     #################
 
     def _add_com_info(self, parent_node=None):
-        # If no parent node passed, COM info is attached to root topology node
+        # If no parent node passed, COM info is attached to root topo node
         if parent_node is None:
             parent_node = self.topology
         # 1. Nodes
-        nodes = [n for n in db_sync_manager.get_com_nodes_by_domain(self.domain_urn)]
+        nodes = [n for n in db_sync_manager.
+                 get_com_nodes_by_domain(self.domain_urn)]
         for node in nodes:
-            if MonitoringUtils.check_existing_tag_in_topology(parent_node, "node", "server", node.get("component_id")):
+            if MonitoringUtils.check_existing_tag_in_topology(
+                    parent_node, "node", "server", node.get("component_id")):
                 break
             logger.debug("com-node=%s" % (node))
-            # If no parent node passed, COM info is attached to root topology node
+            # If no parent node passed, COM info is attached to root topo node
             if parent_node is None:
                 parent_node = self.topology
             n = self._add_generic_node(parent_node, node, "server")
@@ -284,7 +296,8 @@ class BaseMonitoring(object):
                 # NOTE this is extending the "interface" URN
                 interface.set("id", "%s+interface+%s" % (n.get("id"), iface))
         # 2. Links
-        links = [l for l in db_sync_manager.get_com_links_by_domain(self.domain_urn)]
+        links = [l for l in db_sync_manager.
+                 get_com_links_by_domain(self.domain_urn)]
         logger.debug("com-links=%s" % (links,))
         for link in links:
             self._add_com_link(link, parent_node)
@@ -301,11 +314,14 @@ class BaseMonitoring(object):
         links = link.get("links")
         link_exists = False
         for link_i in links:
-            if MonitoringUtils.check_existing_tag_in_topology(parent_node, "link", "lan", [link_i.get("source_id"), link_i.get("dest_id")]):
+            if MonitoringUtils.check_existing_tag_in_topology(
+                    parent_node, "link", "lan",
+                    [link_i.get("source_id"), link_i.get("dest_id")]):
                 link_exists = True
                 break
             # Modify link on-the-fly to add the DPID port as needed
-            link_i = MonitoringUtilsLinks._set_dpid_port_from_link(link.get("component_id"), link_i)
+            link_i = MonitoringUtilsLinks.\
+                _set_dpid_port_from_link(link.get("component_id"), link_i)
             # Source
             iface_source = etree.SubElement(l, "interface_ref")
             iface_source.set("client_id", link_i.get("source_id"))
@@ -328,9 +344,11 @@ class BaseMonitoring(object):
         if parent_node is None:
             parent_node = self.topology
         # 1. Nodes
-        datapaths = [d for d in db_sync_manager.get_sdn_datapaths_by_domain(self.domain_urn)]
+        datapaths = [d for d in db_sync_manager.
+                     get_sdn_datapaths_by_domain(self.domain_urn)]
         for dp in datapaths:
-            if MonitoringUtils.check_existing_tag_in_topology(parent_node, "node", "switch", dp.get("component_id")):
+            if MonitoringUtils.check_existing_tag_in_topology(
+                    parent_node, "node", "switch", dp.get("component_id")):
                 break
             logger.debug("sdn-datapath=%s" % (dp,))
             switch = self._add_generic_node(parent_node, dp, "switch")
@@ -341,7 +359,7 @@ class BaseMonitoring(object):
                 port.set("num", p.get("num"))
         # 2. Links
         (sdn_links, fed_links) = [l for l in db_sync_manager.
-            get_sdn_links_by_domain(self.domain_urn)]
+                                  get_sdn_links_by_domain(self.domain_urn)]
         for sdn_link in sdn_links:
             logger.debug("sdn-link=%s" % (sdn_link,))
             self._add_sdn_link(sdn_link, parent_node)
@@ -351,10 +369,14 @@ class BaseMonitoring(object):
     def _add_sdn_link(self, link, parent_node=None):
         if parent_node is None:
             parent_node = self.topology
-        auth1 = link.get("dpids")[0].get("component_manager_id").replace("authority+cm", "datapath")
-        dpid1 = auth1 + "+" + link.get("dpids")[0].get("dpid") + "_" + link.get("ports")[0].get("port_num")
-        auth2 = link.get("dpids")[1].get("component_manager_id").replace("authority+cm", "datapath")
-        dpid2 = auth2 + "+" + link.get("dpids")[1].get("dpid") + "_" + link.get("ports")[1].get("port_num")
+        auth1 = link.get("dpids")[0].get("component_manager_id").\
+            replace("authority+cm", "datapath")
+        dpid1 = auth1 + "+" + link.get("dpids")[0].get("dpid") + "_" + \
+            link.get("ports")[0].get("port_num")
+        auth2 = link.get("dpids")[1].get("component_manager_id").\
+            replace("authority+cm", "datapath")
+        dpid2 = auth2 + "+" + link.get("dpids")[1].get("dpid") + "_" + \
+            link.get("ports")[1].get("port_num")
         if MonitoringUtils.check_existing_tag_in_topology(
                 parent_node, "link", "lan", [dpid1, dpid2]):
             return
@@ -375,7 +397,8 @@ class BaseMonitoring(object):
              Details: %s" % (link.get("component_id", "(unknown)"), e))
         try:
             # - Prepare link ID for SDNRM-SDNRM link
-            link_id = MonitoringUtilsLinks.get_id_for_link_sdnrm_sdnrm(zip(dpids, ports))
+            link_id = MonitoringUtilsLinks.\
+                get_id_for_link_sdnrm_sdnrm(zip(dpids, ports))
             l.set("id", link_id)
         except Exception as e:
             logger.warning("Physical topology - Cannot add SDN link ID %s. \
@@ -394,11 +417,15 @@ class BaseMonitoring(object):
         # This retrieves TN information from AIST instance
         # (providing MRO has TNRM as peer, or its information in its DB)
         felix_tn_urn = "urn:publicid:IDN+fms:aist:tnrm"
-        nodes = [d for d in db_sync_manager.get_tn_nodes_by_domain(felix_tn_urn)]
-#        nodes = [d for d in db_sync_manager.get_tn_nodes_by_domain(self.domain_urn)]
+        nodes = [d for d in db_sync_manager.
+                 get_tn_nodes_by_domain(felix_tn_urn)]
+#        nodes = [d for d in db_sync_manager.\
+#                 get_tn_nodes_by_domain(self.domain_urn)]
 #        nodes = [d for d in db_sync_manager.get_tn_nodes()]
         for node in nodes:
-            if MonitoringUtils.check_existing_tag_in_topology(parent_node, "node", "tn", node.get("component_id"), self.domain_urn):
+            if MonitoringUtils.check_existing_tag_in_topology(
+                    parent_node, "node", "tn",
+                    node.get("component_id"), self.domain_urn):
                 break
             logger.debug("tn-node=%s" % (node,))
             n = self._add_generic_node(parent_node, node, "tn")
@@ -408,7 +435,8 @@ class BaseMonitoring(object):
                 interface = etree.SubElement(n, "interface")
                 interface.set("id", iface.get("component_id"))
 #        # 2. Links
-#        links = [l for l in db_sync_manager.get_tn_links_by_domain(self.domain_urn)]
+#        links = [l for l in db_sync_manager.
+#                 get_tn_links_by_domain(self.domain_urn)]
 
     ##################
     # SE-RM resources
@@ -419,9 +447,11 @@ class BaseMonitoring(object):
         if parent_node is None:
             parent_node = self.topology
         # 1. Nodes
-        nodes = [d for d in db_sync_manager.get_se_nodes_by_domain(self.domain_urn)]
+        nodes = [d for d in db_sync_manager.
+                 get_se_nodes_by_domain(self.domain_urn)]
         for node in nodes:
-            if MonitoringUtils.check_existing_tag_in_topology(parent_node, "node", "se", node.get("component_id")):
+            if MonitoringUtils.check_existing_tag_in_topology(
+                    parent_node, "node", "se", node.get("component_id")):
                 break
             logger.debug("se-node=%s" % (node,))
             n = self._add_generic_node(parent_node, node, "se")
@@ -429,7 +459,7 @@ class BaseMonitoring(object):
             logger.debug("se-node-interfaces=%s" % node.get("interfaces"))
             for iface in node.get("interfaces"):
                 interface = etree.SubElement(n, "interface")
-                # Parse the component_id to get URN of SE and the port per interface
+                # Parse component_id to get URN of SE and the port per iface
                 component_id = iface.get("component_id")
                 try:
                     interface.set("id", component_id)
@@ -440,12 +470,14 @@ class BaseMonitoring(object):
                     logger.warning("Physical topology - Cannot add SE\
                      interface %s. Details: %s" % (component_id, e))
         # 2. Links
-        links = [l for l in db_sync_manager.get_se_links_by_domain(self.domain_urn)]
+        links = [l for l in db_sync_manager.
+                 get_se_links_by_domain(self.domain_urn)]
         logger.debug("se-links=%s" % (links))
         for link in links:
             dpid1 = link.get("interface_ref")[0].get("component_id")
             dpid2 = link.get("interface_ref")[1].get("component_id")
-            if MonitoringUtils.check_existing_tag_in_topology(parent_node, "link", "lan", [dpid1, dpid2]):
+            if MonitoringUtils.check_existing_tag_in_topology(
+                    parent_node, "link", "lan", [dpid1, dpid2]):
                 break
             logger.debug("se-links=%s" % (link))
             self._add_se_link(link)
@@ -453,8 +485,10 @@ class BaseMonitoring(object):
     def _add_se_link(self, link):
         # Special case: links to be filtered in POST {(M)RO -> (M)MS}
         SE_FILTERED_LINKS = ["*"]
-        interfaces_cid = [i.get("component_id") for i in link.get("interface_ref")]
-        interface_cid_in_filter = [f for f in SE_FILTERED_LINKS if f in interfaces_cid]
+        interfaces_cid = [i.get("component_id") for i
+                          in link.get("interface_ref")]
+        interface_cid_in_filter = [f for f in SE_FILTERED_LINKS
+                                   if f in interfaces_cid]
         # Avoid reinserting existing link tags in the topology
         if MonitoringUtils.check_existing_tag_in_topology(
                 self.topology, "link", "lan", link.get("component_id")):
@@ -470,5 +504,6 @@ class BaseMonitoring(object):
                 iface = etree.SubElement(l, "interface_ref")
                 iface.set("client_id", link.get("component_id"))
             # - Prepare link ID for SERM-SDNRM link
-            link_id = MonitoringUtilsLinks.get_id_for_link_serm_sdnrm_tnrm(links)
+            link_id = MonitoringUtilsLinks.\
+                get_id_for_link_serm_sdnrm_tnrm(links)
             l.set("id", link_id)

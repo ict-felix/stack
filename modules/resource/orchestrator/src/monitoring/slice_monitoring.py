@@ -170,6 +170,28 @@ class SliceMonitoring(BaseMonitoring):
             return self.TN2TN_LINK_TYPE
         return self.MS_LINK_TYPE
 
+    def __add_vlink_info(self, topology_tag, ep_src, ep_dst, link_type=None):
+        # Virtual link differs w.r.t. a normal link
+        # in that those have:
+        # 1) ID (slice name and ID for virtual link)
+        # 2) End-to-end SDN-SDN or SDN-TN link interfaces
+        # 3) (TODO - Ideally) C-SDN link
+        self.__add_link_info(topology_tag, ep_src, ep_dst, link_type)
+        slice_name = MonitoringUtils.find_slice_name(self.__topologies)
+        vlink_ids = MonitoringUtils.find_virtual_links(self.__topologies)
+        ids_used = []
+        max_vl_id = 0
+        try:
+            link_prefix = ":end_link_"
+            for vlink_id in vlink_ids:
+                idx = vlink_id.find(link_prefix) + len(link_prefix)
+                ids_used.append(int(vlink_id[idx]))
+            max_vl_id = max(ids_used)+1
+        except:
+            pass
+        vlink_id = "%s%s%s" % (slice_name, link_prefix, max_vl_id)
+        topology_tag.attrib["id"] = vlink_id
+
     def __add_link_info(self, topology_tag, ep_src, ep_dst, link_type=None):
         # No link_type provided => interfaces appended directly under given tag
         root = topology_tag
@@ -379,13 +401,16 @@ class SliceMonitoring(BaseMonitoring):
                          'destination': p.get("dest_id")})
 
     def __add_se_external_link_info(self, topo, ifs):
+        """
+        Adding SE-to-SDN or SE-to-TN link
+        """
         for i in ifs:
             logger.debug("Searching EXTERNAL-IF from %s" % (i,))
             extif = db_sync_manager.get_interface_ref_by_sekey(i)
             logger.info("External-interface %s" % (extif,))
 
             if extif is not None:
-                # Adding SE-to-SDN or SE-to-TN link
+
                 # self.__add_link_info(topo, i, extif, self.MS_LINK_TYPE)
                 # store the values for the virtual island-to-island link
                 self.__hybrid_links.append({'source': i, 'destination': extif})
@@ -495,7 +520,6 @@ class SliceMonitoring(BaseMonitoring):
                 return hybrid_link.get("destination")
             elif hybrid_link.get("destination") == value:
                 return hybrid_link.get("source")
-
         return None
 
     def __add_island2island_lanlink(self, src, dst, tag):
@@ -543,31 +567,17 @@ class SliceMonitoring(BaseMonitoring):
             logger.error("Unknown sdn interfaces!")
 
     def __add_virtual_link(self, link_subset):
-        # Retrieve the SDN endpoints of the slice ("abstract link" in M/MS)
-        se_link_urns = []
-        # And obtain the SDN resources from those domains
-        # that are linked to the TN link
-        for se_link in self.__hybrid_links:
-            se_link_urns.extend(
-                [se_link.get("source"), se_link.get("destination")])
-
-        vlink_orgs = []
-        sdn_link_urns = []
-        # XXX It is necessary to iterate over TN links, identify their domain
-        for se_link in se_link_urns:
-            se_link_auth = URNUtils.get_authority_from_urn(se_link)
-            if ":ofam" in se_link and se_link_auth not in vlink_orgs:
-                vlink_orgs.append(se_link_auth)
-                sdn_link_urns.append(se_link)
-
-        # TODO Check: what about >2 islands involved in the slice?
-        # For loop (step: 2, reason: finding SDN#1 port <--> SDN#2 port)
-        for i in xrange(0, len(sdn_link_urns), 2):
-            try:
-                self.__add_link_info(
-                    link_subset, sdn_link_urns[i], sdn_link_urns[i+1])
-            except:
-                pass
+        try:
+            end2end_links = MonitoringUtils.\
+                find_virtual_link_end_to_end(self.__hybrid_links)
+            # TODO Check: what about 1 or >2 islands involved in slice?
+            # For loop (step: 2, reason: finding SDN#1 port <--> SDN#2 port)
+            for i in xrange(0, len(end2end_links)+1, 2):
+                self.__add_vlink_info(
+                    link_subset, end2end_links[i], end2end_links[i+1])
+        except Exception as e:
+            logger.error("Cannot add virtual link to monitoring. \
+                (Probably due to mismatch of end2end links). Details: %s" % e)
 
     def add_island_to_island_links(self, slice_urn):
         if slice_urn not in self.__stored:
