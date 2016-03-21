@@ -26,6 +26,7 @@ from utils.ro import ROUtils
 from core.config import ConfParser
 import ast
 import core
+import traceback
 
 logger = core.log.getLogger("geniv3delegate")
 
@@ -468,6 +469,7 @@ class GENIv3Delegate(GENIv3DelegateBase):
         except Exception as e:
             logger.warning("Delegate could not send Provision trigger" +
                            " to MS. Details: %s", (e,))
+            traceback.print_exc()
 
         route = db_sync_manager.get_slice_routing_keys(urns)
         logger.debug("Route=%s" % (route,))
@@ -491,6 +493,7 @@ class GENIv3Delegate(GENIv3DelegateBase):
                 except Exception as e:
                     logger.warning("Delegate could not monitor COM resources" +
                                    " upon Provision. Details: %s", (e,))
+                    traceback.print_exc()
 
             elif peer.get("type") == self._allowed_peers.get("PEER_SDNRM"):
                 of_m_info, of_slivers = SDNUtils().manage_provision(
@@ -508,6 +511,7 @@ class GENIv3Delegate(GENIv3DelegateBase):
                 except Exception as e:
                     logger.warning("Delegate could not monitor SDN resources" +
                                    " upon Provision. Details: %s", (e,))
+                    traceback.print_exc()
 
             elif peer.get("type") == self._allowed_peers.get("PEER_TNRM"):
                 tn_m_info, tn_slivers = TNUtils().manage_provision(
@@ -528,6 +532,7 @@ class GENIv3Delegate(GENIv3DelegateBase):
                 except Exception as e:
                     logger.warning("Delegate could not monitor TN resources" +
                                    " upon Provision. Details: %s", (e,))
+                    traceback.print_exc()
 
             elif peer.get("type") == self._allowed_peers.get("PEER_SERM"):
                 se_m_info, se_slivers = SEUtils().manage_provision(
@@ -548,6 +553,7 @@ class GENIv3Delegate(GENIv3DelegateBase):
                 except Exception as e:
                     logger.warning("Delegate could not monitor SE resources" +
                                    " upon Provision. Details: %s", (e,))
+                    traceback.print_exc()
 
             elif peer.get("type") == self._allowed_peers.get("PEER_RO"):
                 ro_m_info, ro_slivers_ro = ROUtils().manage_provision(
@@ -573,6 +579,7 @@ class GENIv3Delegate(GENIv3DelegateBase):
                 except Exception as e:
                     logger.warning("Delegate could not monitor RO resources" +
                                    " upon Provision. Details: %s", (e,))
+                    traceback.print_exc()
 
         # send slice-monitoring info to the monitoring system
         try:

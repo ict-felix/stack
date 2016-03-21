@@ -5,7 +5,9 @@ from rspecs.commons_tn import Node, Interface
 from rspecs.commons_se import SELink
 from db.db_manager import db_sync_manager
 from commons import CommonUtils
+from core.utils.urns import URNUtils
 from delegate.geni.v3 import exceptions as delegate_ex
+from lxml import etree
 
 import core
 logger = core.log.getLogger("se-utils")
@@ -14,6 +16,11 @@ logger = core.log.getLogger("se-utils")
 class SEUtils(CommonUtils):
     def __init__(self):
         super(SEUtils, self).__init__()
+        # Enforce consistency of SERM request due to stitching/
+        # networking limitation on using same out_vlan in phy rules
+        # XXX ... Default was False in order to *return links from every SDN
+        # device to the SE device* (and allow outgoing traffic from any place)
+        self.__limit_se_out_vlan = True
 
     def manage_describe(self, peer, urns, creds):
         try:
@@ -171,7 +178,8 @@ class SEUtils(CommonUtils):
         return True
 
     def __update_link(self, links, svalues, tvalues):
-        # added_links = []
+        added_links = []
+        added_d_vlans = []
         for s in svalues:
             for sintf in s.get("internal_ifs"):
                 for t in tvalues:
@@ -186,12 +194,19 @@ class SEUtils(CommonUtils):
                                                    s.get("vlan"),
                                                    t.get("vlan"),
                                                    s.get("routing_key"))
-#                            l_add = {"sdn_cid": sintf.get("component_id"),
-#                                    "tn_cid": tintf.get("component_id")}
-#                            if l_add not in added_links:
-#                                links.append(l)
-#                                added_links.append(l_add)
-                            links.append(l)
+                            l_add = {"sdn_cid": sintf.get("component_id"),
+                                     "tn_cid": tintf.get("component_id")}
+                            # Ensure consistency to request feasible rules
+                            if self.__limit_se_out_vlan:
+                                if l_add not in added_links and \
+                                        t.get("vlan") not in added_d_vlans:
+                                    links.append(l)
+                                    added_links.append(l_add)
+                                    added_d_vlans.append(t.get("vlan"))
+                            else:
+                                if l_add not in added_links:
+                                    links.append(l)
+                                    added_links.append(l_add)
 
     def __extract_info(self, sdn, tn):
         nodes, links = [], []
@@ -231,6 +246,9 @@ class SEUtils(CommonUtils):
 
         for k, v in route.iteritems():
             try:
+                # Ensure consistency to request only feasible rules
+                route[k] = self.__enforce_se_consistency(v.rspec)
+
                 (m, ss) =\
                     self.send_request_allocate_rspec(k, v, surn, creds, end)
                 manifest = SERMv3ManifestParser(from_string=m)
@@ -289,6 +307,55 @@ class SEUtils(CommonUtils):
     #         for i in l.get('interface_ref'):
     #             i['vlantag'] = ret.get(i.get('component_id'))
 
+    def __enforce_se_consistency(self, route):
+        route_original = etree.tostring(route)
+        if isinstance(route, str):
+            root = etree.fromstring(route)
+        else:
+            root = route
+        # Use GENIv3 namespace as used in base request formatter
+        ns = root.nsmap[None]
+        # Verify that interfaces (from node) are all defined in links
+        interfaces = root.xpath("//x:node//x:interface", namespaces={"x": ns})
+        links = root.xpath("//x:link", namespaces={"x": ns})
+
+        for link in links:
+            local_interfaces = link.xpath(
+                "x:interface_ref", namespaces={"x": ns})
+            for interface in interfaces:
+                # Check for inconsistent interfaces and remove them, i.e.
+                # not defined in link's client_id or on its interfaces
+                if URNUtils.get_datapath_and_port_from_datapath_id(
+                    interface.get("client_id"))[0] not in \
+                    link.get("client_id") \
+                    or interface.get("client_id") not in \
+                        [x.get("client_id") for x in local_interfaces]:
+                    logger.debug("SE request: removing interface not in use \
+                        (%s)" % etree.tostring(interface, pretty_print=True))
+                    interface.getparent().remove(interface)
+
+        if len(links) == 0:
+            try:
+                interfaces[0].getparent().getparent().remove(
+                    interfaces[0].getparent())
+                logger.debug("SE request: removing request due to \
+                    missing links")
+            except:
+                pass
+        if len(interfaces) == 0:
+            try:
+                links[0].getparent().remove(links[0])
+                logger.debug("SE request: removing request due to \
+                    missing interfaces")
+            except:
+                pass
+
+        route_new = etree.tostring(route)
+        if route_original != route_new:
+            logger.info(
+                "Route (after consistency check)=%s" %
+                (etree.tostring(route, pretty_print=True),))
+
     def manage_direct_allocate(self, surn, creds, end, nodes, links):
         route = {}
         self.__update_node_route(route, nodes)
@@ -303,8 +370,6 @@ class SEUtils(CommonUtils):
 #        logger.warning("Updated Links(%d)=%s" % (len(links), links,))
 
         self.__update_direct_route_rspec(route, nodes, links)
-        logger.info("Route=%s" % (route,))
-
         manifests, slivers, db_slivers = [], [], []
 
         for k, v in route.iteritems():
