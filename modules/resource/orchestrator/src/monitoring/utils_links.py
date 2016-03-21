@@ -58,7 +58,7 @@ class MonitoringUtilsLinks(object):
                     link_id = link_id.replace(":ofam+datapath+", "+link+")
                 elif link_id.find(":serm+datapath+") > -1:
                     # Replace link in all but SE-TN links (where TN = "ogf")
-                    if not any([ "ogf" in x for x in links ]):
+                    if not any(["ogf" in x for x in links]):
                         link_id = link_id.replace(":serm+datapath+", "+link+")
             # - Contents from TN URNs are not replaced
             else:
@@ -73,14 +73,18 @@ class MonitoringUtilsLinks(object):
 
     @staticmethod
     def _translate_link_types(topology_tree):
-#        topology_tree = etree.fromstring(self.get_topology())
-#        filtered_links = topology_tree.xpath("//link")
+        # topology_tree = etree.fromstring(self.get_topology())
+        # filtered_links = topology_tree.xpath("//link")
         filtered_links = topology_tree.findall(".//link")
         for filtered_link in filtered_links:
             if filtered_link.get("link_type"):
-                filtered_link.set("link_type", MonitoringUtilsLinks._translate_link_type(filtered_link))
+                filtered_link.set(
+                    "link_type", MonitoringUtilsLinks.
+                    _translate_link_type(filtered_link))
             elif filtered_link.get("type"):
-                filtered_link.set("type", MonitoringUtilsLinks._translate_link_type(filtered_link))
+                filtered_link.set(
+                    "type", MonitoringUtilsLinks.
+                    _translate_link_type(filtered_link))
 #        self.set_topology_tree(topology_tree)
 
     @staticmethod
@@ -88,16 +92,15 @@ class MonitoringUtilsLinks(object):
         # TODO - IMPORTANT FOR MS TO PARSE PROPERLY:
         #   Add others as needed in the future!
         default_type = "lan"
-        
         ms_link_type_lan = "lan"
 #        ms_link_type_static_link = "static_link"
 #        ms_link_type_vlan_trans = "vlan_translation"
         link_type_translation = {
-            "l2" : ms_link_type_lan,
+            "l2": ms_link_type_lan,
             "l2 link": ms_link_type_lan,
-            #"urn:felix+static_link": ms_link_type_static_link,
+            # "urn:felix+static_link": ms_link_type_static_link,
             "urn:felix+static_link": ms_link_type_lan,
-#            "urn:felix+vlan_trans": ms_link_type_vlan_trans,
+            # "urn:felix+vlan_trans": ms_link_type_vlan_trans,
             "urn:felix+vlan_trans": ms_link_type_lan,
         }
         # Tries to get some attributes
@@ -108,7 +111,8 @@ class MonitoringUtilsLinks(object):
         if not link_type:
             link_type = default_type
         else:
-            link_type = link_type_translation.get(link_type.lower(), default_type)
+            link_type = link_type_translation.\
+                get(link_type.lower(), default_type)
         return link_type
 
     @staticmethod

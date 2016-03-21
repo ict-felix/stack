@@ -370,7 +370,7 @@ class TNUtils(CommonUtils):
             be iteratively examined to minimise possible collisions of VLANs
         """
         new_node = {}
-        num_iter = 0
+        # num_iter = 0
         vlan = ""
         for k in node.keys():
             if k == "vlan":
