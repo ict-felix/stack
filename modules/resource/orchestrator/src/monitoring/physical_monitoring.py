@@ -21,13 +21,17 @@ class PhysicalMonitoring(BaseMonitoring):
     def retrieve_topology_by_peer(self, peer_urn):
         # Prepare list of allowed peers and resources
         type_resources_crm = ["crm"]
-        type_resources_crm.extend(self.urn_type_resources_variations.get("crm"))
+        type_resources_crm.extend(
+            self.urn_type_resources_variations.get("crm"))
         type_resources_sdnrm = ["sdnrm"]
-        type_resources_sdnrm.extend(self.urn_type_resources_variations.get("sdnrm"))
+        type_resources_sdnrm.extend(
+            self.urn_type_resources_variations.get("sdnrm"))
         type_resources_serm = ["serm"]
-        type_resources_serm.extend(self.urn_type_resources_variations.get("serm"))
+        type_resources_serm.extend(
+            self.urn_type_resources_variations.get("serm"))
         type_resources_tnrm = ["tnrm"]
-        type_resources_tnrm.extend(self.urn_type_resources_variations.get("tnrm"))
+        type_resources_tnrm.extend(
+            self.urn_type_resources_variations.get("tnrm"))
 
         type_resources = []
         type_resources.extend(type_resources_crm)
@@ -63,23 +67,28 @@ class PhysicalMonitoring(BaseMonitoring):
             if not self.__check_node_in_topology("tn"):
                 self._add_tn_info()
 
-            # Verify structure of the "topology" tag before constructing final XML to be sent to MS
-            ## Note: on SUCCESS return, it returns a boolean. On FAILURE return, it returns (boolean, string)
+            # Verify structure of the "topology" tag before
+            # constructing final XML to be sent to MS
+            # - Note: on SUCCESS return, it returns a boolean.
+            # - On FAILURE return, it returns (boolean, string)
             check_topology = self.__check_topology_is_correct()
-            if check_topology == True:
+            if check_topology is True:
                 self.flush_topology()
             else:
-                logger.warning("Physical topology - Topology for domain=%s does not contain the minimum SW modules required by MS: missing '%s' node." % (domain_name, check_topology[1]))
+                logger.warning("Physical topology - Topology for domain=%s \
+                does not contain the minimum SW modules required by MS: \
+                missing '%s' node." % (domain_name, check_topology[1]))
 
-        # Clean any empty node (result of not containing the minimum SW modules)
+        # Clean any empty node (result of not containing
+        # the minimum SW modules)
         self.remove_empty_nodes()
-        # M-RO environment: refactoring of the topology list (regroup nodes & links per island)
+        # M-RO environment: refactoring of the topology list
+        # (regroup nodes & links per island)
         if self.mro_enabled:
             self.__group_resources_per_island()
         # Send topology after all peers are completed
         self._send(self.get_topology(), monitoring_server)
         logger.debug("Resulting RSpec=%s" % self.get_topology_pretty())
-
 
     ##########
     # Helpers
@@ -90,7 +99,9 @@ class PhysicalMonitoring(BaseMonitoring):
         Creates new RSpec from scratch.
         """
         # Milliseconds in UTC format
-        self.topology.set("last_update_time", self.domain_last_update or self._get_timestamp())
+        self.topology.set(
+            "last_update_time",
+            self.domain_last_update or self._get_timestamp())
         self.topology.set("type", "physical")
         # Use custom URN format for the domain URN in the XML
         self.topology.set("name", "urn:publicid:IDN+ocf:" + self.domain_urn)
@@ -109,7 +120,9 @@ class PhysicalMonitoring(BaseMonitoring):
         the required "<node>" tags (i.e. types) expected by MS.
         """
         # Remove unexpected / non-required nodes
-        ms_expected_nodes = filter(lambda n: n, self.monitoring_expected_nodes.values())
+        ms_expected_nodes = filter(
+            lambda n: n,
+            self.monitoring_expected_nodes.values())
         for n in ms_expected_nodes:
             # If any is not found, return false
             if not self.topology.findall(".//node[@type='%s']" % n):
@@ -125,21 +138,28 @@ class PhysicalMonitoring(BaseMonitoring):
             db_peers = {}
             for peer in peers:
                 db_peer = db_sync_manager.get_configured_peer_by_urn(peer)
-                # Looks for referred domain through peer ID; retrieve URN and last update
-                filter_params = {"_ref_peer": db_peer.get("_id"),}
-                # For a MRO environment, we can have multiple domains in the same island
+                # Looks for referred domain through peer ID;
+                # retrieve URN and last update
+                filter_params = {"_ref_peer": db_peer.get("_id")}
+                # For the MRO environment, it is possible to have
+                # multiple domains in the same island
                 db_peers[peer] = {
                     "db_peer": db_peer,
                     "domain_urns": set(),
                     "domain_last_update": None
                 }
-                for domain_peer in db_sync_manager.get_domains_info(filter_params):
+                for domain_peer in db_sync_manager.\
+                        get_domains_info(filter_params):
                     try:
                         domain_peer_urn = domain_peer.get("domain_urn")
-                        physical_topology = db_sync_manager.get_physical_info_from_domain(domain_peer.get("_id"))
-                        domain_last_update = physical_topology.get("last_update")
+                        physical_topology = db_sync_manager.\
+                            get_physical_info_from_domain(
+                                domain_peer.get("_id"))
+                        domain_last_update = physical_topology.\
+                            get("last_update")
                         db_peers[peer]["domain_urns"].add(domain_peer_urn)
-                        db_peers[peer]["domain_last_update"] = domain_last_update
+                        db_peers[peer]["domain_last_update"] = \
+                            domain_last_update
 
                         self.domain_peer_urn = domain_peer_urn
                         # Choose less recent time of last update
@@ -147,12 +167,15 @@ class PhysicalMonitoring(BaseMonitoring):
                             if domain_last_update < self.domain_last_update:
                                 self.domain_last_update = domain_last_update
                     except Exception as e:
-                        logger.warning("Physical topology - Cannot recover information for peer='%s'. Skipping to the next peer. Details: %s" % (peer, e))
+                        logger.warning("Physical topology - Cannot recover \
+                        information for peer='%s'. Skipping to the next \
+                        peer. Details: %s" % (peer, e))
                         logger.warning(traceback.format_exc())
             # Add general information to the topology
             self.__add_general_info()
 
-            # For a MRO environment, we need to send single copy of the same information
+            # For a MRO environment, we need to send single
+            # copy of the same information
             domain_urn_set = set()
             for v in db_peers.values():
                 domain_urn_set.update(v.get("domain_urns"))
@@ -161,7 +184,9 @@ class PhysicalMonitoring(BaseMonitoring):
                 # Retrieve proper resources
                 self.retrieve_topology_by_peer(durn)
         except Exception as e:
-            logger.warning("Physical topology - Cannot recover information for domain='%s'. Skipping to the next domain. Details: %s" % (domain_name, e))
+            logger.warning("Physical topology - Cannot recover information \
+            for domain='%s'. Skipping to the next domain. \
+            Details: %s" % (domain_name, e))
             logger.warning(traceback.format_exc())
 
     def __get_island_name(self, urn):
@@ -176,7 +201,7 @@ class PhysicalMonitoring(BaseMonitoring):
         if len(name) > 0:
             return etree.SubElement(
                 topolist, "topology",
-                attrib = {"last_update_time": uptime,
+                attrib={"last_update_time": uptime,
                         "type": typee,
                         "name": "urn:publicid:IDN+ocf:" + name})
 
@@ -198,7 +223,9 @@ class PhysicalMonitoring(BaseMonitoring):
             for node in topology.iter("node"):
                 island = self.__get_island_name(node.get("id"))
                 toporef = self.__get_topology_ref(
-                    tmp_topology_list, island, topology.get("last_update_time"), topology.get("type"))
+                    tmp_topology_list, island,
+                    topology.get("last_update_time"),
+                    topology.get("type"))
                 # do not copy TN nodes here
                 if node.get("type") != "tn":
                     toporef.append(deepcopy(node))
@@ -206,7 +233,9 @@ class PhysicalMonitoring(BaseMonitoring):
             for link in topology.iter("link"):
                 island = self.__get_island_name(link.get("id"))
                 toporef = self.__get_topology_ref(
-                    tmp_topology_list, island, topology.get("last_update_time"), topology.get("type"))
+                    tmp_topology_list, island,
+                    topology.get("last_update_time"),
+                    topology.get("type"))
                 toporef.append(deepcopy(link))
         # MMS waits for 1 TN node per island
         for topology in self.topology_list.iter("topology"):

@@ -60,6 +60,8 @@ class FlaskServer(object):
         # self._app_mongo = PyMongo(self._app)
         self._app.mongo = db_sync_manager
         self._app.db = "felix_mro" if self.mro_enabled else "felix_ro"
+        self._app.policies_enabled = self.policies_enabled
+        self._app.policies_allowed_origins = self.policies_allowed_origins
         # Added in order to be able to execute "before_request" method
         app = self._app
 
@@ -106,6 +108,19 @@ class FlaskServer(object):
         self.mro_section = self.config.get("ro.conf").get("master_ro")
         self.mro_enabled = ast.literal_eval(
             self.mro_section.get("mro_enabled"))
+        try:
+            self.policies_category = self.config.get("policies.conf")
+            self.policies_flask_section = self.policies_category.get("flask")
+            self.policies_enabled = \
+                ast.literal_eval(self.policies_flask_section.get("enabled"))
+            self.policies_allowed_origins = \
+                ast.literal_eval(
+                    self.policies_flask_section.get("allowed_origins")
+                )
+        except:
+            # When policies conf file does not exist, there are no checks
+            self.policies_enabled = False
+            self.policies_allowed_origins = ["*"]
 
     @property
     def app(self):
