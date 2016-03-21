@@ -13,6 +13,7 @@ def homepage():
 
 
 @ro_flask_views.route("/db/peers", methods=["GET"])
+@methods.check_request_by_origin
 @methods.check_cli_user_agent
 def db_peers():
     try:
@@ -23,6 +24,7 @@ def db_peers():
 
 
 @ro_flask_views.route("/db/vlans/used/tn", methods=["GET"])
+@methods.check_request_by_origin
 @methods.check_cli_user_agent
 def db_tn_vlans():
     try:
@@ -33,6 +35,7 @@ def db_tn_vlans():
 
 
 @ro_flask_views.route("/gui/peers", methods=["GET"])
+@methods.check_request_by_origin
 @methods.check_gui_user_agent
 def gui_peers():
     try:

@@ -1,6 +1,7 @@
 from delegate.geni.v3.utils.tn import TNUtils
 
 from flask import current_app
+from flask import request
 from flask import Response
 from functools import wraps
 
@@ -43,7 +44,28 @@ def warn_must_use_cli():
             Details: %s" % CLI_UNAVAILABLE_MSG)
 
 
+def check_request_by_origin(func):
+    """
+    Enforce check of origin (remote) address and allow
+    consequently depending on the accepted values.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not current_app.policies_enabled or \
+            "*" in current_app.policies_allowed_origins or \
+            current_app.policies_enabled and \
+            any([orig in request.environ["REMOTE_ADDR"] for
+                orig in current_app.policies_allowed_origins]):
+            return func(*args, **kwargs)
+        else:
+            return error_on_unallowed_method("Method not supported.")
+    return wrapper
+
+
 def check_cli_user_agent(func):
+    """
+    Enforce check of CLI-based agent to access specific methods.
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         check_ua = warn_must_use_cli()
@@ -55,6 +77,9 @@ def check_cli_user_agent(func):
 
 
 def check_gui_user_agent(func):
+    """
+    Enforce check of GUI-based agent to access specific methods.
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         check_ua = warn_must_use_gui()
