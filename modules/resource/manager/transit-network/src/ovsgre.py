@@ -741,7 +741,11 @@ class OvsManager:
         if resvp is None:
             raise ManagerException("OvsManager:terminate", "The ResvParameter is null.")
 
-        self.release(resv)
+        keep = None
+        try:
+            self.release(resv)
+        except Exception as e:
+            keep = e
 
         resvp.free()
         del dict_resvParameter[resv.resv_id]
@@ -750,6 +754,9 @@ class OvsManager:
             del self.dict_used[resv.resv_id]
         if self.dict_isSetRule.has_key(resv.resv_id):
             del self.dict_isSetRule[resv.resv_id]
+
+        if keep is not None:
+            raise keep
 
         return resv.resv_id
 
