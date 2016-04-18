@@ -11,6 +11,7 @@ class SERMv3RequestParser(TNRMv3RequestParser):
         self.SEStaticLinkManager = SEStaticLinkManager.StaticLinkVlanManager()
         self.__sv = self.rspec.nsmap.get('sharedvlan')
         self.logger = core.log.getLogger("geniv3delegate")
+        self.staticVlans = {}
 
     def links(self):
         links_ = []
@@ -53,29 +54,41 @@ class SERMv3RequestParser(TNRMv3RequestParser):
             for i in n.iterfind("{%s}interface" % (self.none)):
                 i_ = Interface(i.attrib.get("client_id"))
                 # Try if this is the old Rspec format
-                try:
-                    # ddd = i.iterfind("{%s}link_shared_vlan" % (self.__sv))
-                    print "@@@@@@@@iterfind@@@@@@@@@@@: ", i.__map__
-                    for sv in i.iterfind("{%s}link_shared_vlan" % (self.__sv)):
-                        # print "@@@@@@@@after@@@@@@@@@@@: "
-                        # print "@@@@@@@@vlan@@@@@@@@@@@", sv.attrib.get("vlantag")
-                        if sv.attrib.get("vlantag") == "0":
-                            staticPort = i.attrib.get("client_id").split("_")[-1]
-                            staticPortVlan = self.SEStaticLinkManager.chooseVlan(staticPort)
-                            i_.add_vlan(staticPortVlan,
-                                        sv.attrib.get("name"))
-                        else:
-                            # print "BBBBBBBBBBBBBBBBBBB: ", sv.attrib.get("vlantag")
-                            i_.add_vlan(sv.attrib.get("vlantag"),
-                                        sv.attrib.get("name"))
-                    # print "@@@@@@@@ggggg@@@@@@@@@@@: ", i.iterfind("{%s}link_shared_vlan" % (self.__sv))
+                svChildrenNumber = len(list(i.iterfind("{%s}link_shared_vlan" % (self.__sv))))
+
+                ### Checking if there are "sharedvlan" tags (old RSpec format)
+                if svChildrenNumber == 1:
+                    self.logger.debug("Probably old RSpec format in \"<node ...>\"")
+                    try:
+
+                        for sv in i.iterfind("{%s}link_shared_vlan" % (self.__sv)):
+                            
+                            if sv.attrib.get("vlantag") == "0":
+                                staticPort = i.attrib.get("client_id").split("_")[-1]
+                                if staticPort in self.staticVlans:
+                                    print "choosing static port VLAN"
+                                    staticPortVlan = self.SEStaticLinkManager.chooseVlan(staticPort)
+                                    self.staticVlans[staticPort] = staticPortVlan
+                                i_.add_vlan(staticPortVlan,
+                                            sv.attrib.get("name"))
+                            else:
+                                i_.add_vlan(sv.attrib.get("vlantag"),
+                                            sv.attrib.get("name"))
+                        n_.add_interface(i_.serialize())
+                    # On Exception try new Rspec format
+                    except:
+                        for link in links:
+                            pass
+
+                ### Checking if "sharedvlan" tags are missing (new RSpec format)
+                elif svChildrenNumber == 0:
+                    self.logger.debug(">>>>> Probably new RSpec format in \"<node ...>\"")
+                    i_.add_vlan("1000", i.attrib.get("client_id")+"+vlan")
                     n_.add_interface(i_.serialize())
-                # On Exception try new Rspec format
-                except:
-                    # print "@@@@@@@@@newRspec@@@@@@@@@@"
-                    for link in links:
-                        # print "@@@@@@@@@@@@@@@@@@@", link['component_id']
-                        pass
+
+                ### Checking if there are more than one "sharedvlan" tag for each Interface (invalid RSpec format)
+                elif svChildrenNumber > 1:
+                    self.logger.debug(">>>>> Invalid RSpec format. Too many <sharedvlan> tags in \"<node ...>\".")
 
             nodes_.append(n_.serialize())
 
@@ -94,7 +107,10 @@ class SERMv3RequestParser(TNRMv3RequestParser):
                     singleVlanPair["port_id"] = i.attrib["client_id"]
                     port = singleVlanPair["port_id"].split("_")[-1]
                     if singleVlanPair["vlan"] == "0":
-                        singleVlanPair["vlan"] = self.SEStaticLinkManager.chooseVlan(port)
+                        if staticPort in self.staticVlans:
+                            print "choosing static port VLAN"
+                            staticPortVlan = self.SEStaticLinkManager.chooseVlan(staticPort)
+                            self.staticVlans[staticPort] = staticPortVlan
                     vlanPairs.append(singleVlanPair)
                 sliceVlanPairs.append(vlanPairs)
             return sliceVlanPairs
@@ -118,7 +134,10 @@ class SERMv3RequestParser(TNRMv3RequestParser):
                                 vlan_element = i.find(".//{http://www.geni.net/resources/rspec/ext/shared-vlan/1}link_shared_vlan")
                                 singleVlanPair["vlan"] = vlan_element.attrib["vlantag"]
                                 if singleVlanPair["vlan"] == "0":
-                                    singleVlanPair["vlan"] = self.SEStaticLinkManager.chooseVlan(port)
+                                    if staticPort in self.staticVlans:
+                                        print "choosing static port VLAN"
+                                        staticPortVlan = self.SEStaticLinkManager.chooseVlan(staticPort)
+                                        self.staticVlans[staticPort] = staticPortVlan
                                 vlanPairs.append(singleVlanPair)  
 
                     # for i in l.iterfind("{%s}interface_ref" % (self.none)):
@@ -159,7 +178,11 @@ class SERMv3RequestParser(TNRMv3RequestParser):
             srcVlan = src.split("?")[1].split("=")[-1]
 
             if srcVlan == "0":
-                srcVlan = self.SEStaticLinkManager.chooseVlan(srcPort)
+                # srcVlan = self.SEStaticLinkManager.chooseVlan(srcPort)
+                if srcPort in self.staticVlans:
+                    print "choosing static port VLAN"
+                    staticPortVlan = self.SEStaticLinkManager.chooseVlan(srcPort)
+                    self.staticVlans[srcPort] = staticPortVlan
 
             srcPortUrn = prefix + "+" + srcDpid + "_" + srcPort
 
@@ -170,7 +193,11 @@ class SERMv3RequestParser(TNRMv3RequestParser):
             dstVlan = dst.split("?")[1].split("=")[-1]
 
             if dstVlan == "0":
-                dstVlan = self.SEStaticLinkManager.chooseVlan(dstPort)
+                # dstVlan = self.SEStaticLinkManager.chooseVlan(dstPort)
+                if dstPort in self.staticVlans:
+                    print "choosing static port VLAN"
+                    staticPortVlan = self.SEStaticLinkManager.chooseVlan(dstPort)
+                    self.staticVlans[dstPort] = staticPortVlan
 
             dstPortUrn = prefix + "+" + dstDpid + "_" + dstPort
 

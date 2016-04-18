@@ -23,13 +23,11 @@ from se_slices import seSlicesWithSlivers
 from delegate.geni.v3.db_manager_se import db_sync_manager
 
 
-
 # dynamic import of SE provision plugin depending on config settings
 se_provision = __import__(SEConfigurator.seConfigurator().get_provision_plugin(), globals(), locals(), [], -1)
 
 from datetime import datetime, timedelta
 from delegate.geni.v3.se_scheduler import SESchedulerService
-
 
 logger = core.log.getLogger("geniv3delegate")
 
