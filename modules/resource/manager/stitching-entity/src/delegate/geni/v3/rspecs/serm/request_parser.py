@@ -66,7 +66,7 @@ class SERMv3RequestParser(TNRMv3RequestParser):
                             if sv.attrib.get("vlantag") == "0":
                                 staticPort = i.attrib.get("client_id").split("_")[-1]
                                 if staticPort in self.staticVlans:
-                                    print "choosing static port VLAN"
+                                    self.logger.debug("choosing static port VLAN")
                                     staticPortVlan = self.SEStaticLinkManager.chooseVlan(staticPort)
                                     self.staticVlans[staticPort] = staticPortVlan
                                 i_.add_vlan(staticPortVlan,
@@ -83,7 +83,19 @@ class SERMv3RequestParser(TNRMv3RequestParser):
                 ### Checking if "sharedvlan" tags are missing (new RSpec format)
                 elif svChildrenNumber == 0:
                     self.logger.debug(">>>>> Probably new RSpec format in \"<node ...>\"")
-                    i_.add_vlan("1000", i.attrib.get("client_id")+"+vlan")
+                    clientId = i.attrib.get("client_id")
+                    self.searchVlanForPort(clientId)
+                    vlanInRspec = self.searchVlanForPort(clientId)
+                    port = clientId.split("_")[-1]
+                    if vlanInRspec == "0":
+                        if port in self.staticVlans:
+                            vlanInRspec = self.staticVlans[port]
+                        else:
+                            self.logger.debug("choosing static port VLAN")
+                            staticPortVlan = self.SEStaticLinkManager.chooseVlan(port)
+                            self.staticVlans[port] = staticPortVlan
+                            vlanInRspec = staticPortVlan
+                    i_.add_vlan(vlanInRspec, clientId + "+vlan")
                     n_.add_interface(i_.serialize())
 
                 ### Checking if there are more than one "sharedvlan" tag for each Interface (invalid RSpec format)
@@ -94,7 +106,9 @@ class SERMv3RequestParser(TNRMv3RequestParser):
 
         return nodes_
 
-    def getVlanPairs(self):
+
+    def parseOldRspecFromat(self):
+
         try:
             sliceVlanPairs=[]
             for l in self.rspec.findall(".//{%s}link" % (self.none)):
@@ -107,16 +121,19 @@ class SERMv3RequestParser(TNRMv3RequestParser):
                     singleVlanPair["port_id"] = i.attrib["client_id"]
                     port = singleVlanPair["port_id"].split("_")[-1]
                     if singleVlanPair["vlan"] == "0":
-                        if staticPort in self.staticVlans:
-                            print "choosing static port VLAN"
-                            staticPortVlan = self.SEStaticLinkManager.chooseVlan(staticPort)
-                            self.staticVlans[staticPort] = staticPortVlan
+                        if port in self.staticVlans:
+                            singleVlanPair["vlan"] = self.staticVlans[port]
+                        else:
+                            self.logger.debug("choosing static port VLAN")
+                            staticPortVlan = self.SEStaticLinkManager.chooseVlan(port)
+                            self.staticVlans[port] = staticPortVlan
+                            singleVlanPair["vlan"] = staticPortVlan
                     vlanPairs.append(singleVlanPair)
                 sliceVlanPairs.append(vlanPairs)
             return sliceVlanPairs
         except:
             try:
-                print ">>>> 2nd Gen Rspec"
+                self.logger.debug(">>>> 2nd Gen Rspec")
                 sliceVlanPairs=[]
                 for l in self.rspec.findall(".//{%s}link" % (self.none)):
                     client_id = l.attrib["client_id"]
@@ -135,22 +152,15 @@ class SERMv3RequestParser(TNRMv3RequestParser):
                                 singleVlanPair["vlan"] = vlan_element.attrib["vlantag"]
                                 if singleVlanPair["vlan"] == "0":
                                     if staticPort in self.staticVlans:
-                                        print "choosing static port VLAN"
+                                        self.logger.debug("choosing static port VLAN")
                                         staticPortVlan = self.SEStaticLinkManager.chooseVlan(staticPort)
                                         self.staticVlans[staticPort] = staticPortVlan
                                 vlanPairs.append(singleVlanPair)  
-
-                    # for i in l.iterfind("{%s}interface_ref" % (self.none)):
-                    #     singleVlanPair={}
-                    #     singleVlanPair["vlan"] = i.attrib["{http://ict-felix.eu/serm_request}vlan"] # felix:vlan param
-                    #     # singleVlanPair["port_id"] = i.attrib["client_id"].split("_")[-1]
-                    #     singleVlanPair["port_id"] = i.attrib["client_id"]
-                    #     vlanPairs.append(singleVlanPair)
                     sliceVlanPairs.append(vlanPairs)
                 return sliceVlanPairs
 
             except:
-                print ">>>> 2nd Gen Rspec - failed!"
+                self.logger.debug(">>>> 2nd Gen Rspec - failed!")
                 try:
                     self.logger.info("Trying new RSpec format")
                     sliceVlanPairs = self.parseNewRspecFormat()
@@ -159,6 +169,79 @@ class SERMv3RequestParser(TNRMv3RequestParser):
                     self.logger.error("RSpec format not valid!")
 
                 return None
+
+    def getVlanPairs (self):
+        sliceVlanPairs=[]
+        
+        for l in self.rspec.findall(".//{%s}link" % (self.none)):
+                client_id = l.attrib["client_id"]
+                singleVlanPair = []
+                if "?vlan" in client_id:
+                    print ">>>>>> New RSpec format"
+                    
+                    srcDst = client_id.split("-")
+
+                    src = srcDst[0].split("?vlan=")
+                    dst = srcDst[1].split("?vlan=")
+
+                    vlanIn = src[1]
+
+                    prefix, portIn = src[0].split("_")
+                    prefix, dpid = prefix.rsplit("+", 1)
+
+                    vlanOut = dst[1]
+                    portOut = dst[0].split("_")[1]
+
+
+                    clientIdOldFormat = prefix + "+" + dpid + "_" + portIn + "_" + dpid + "_" + portOut
+                    print clientIdOldFormat
+
+                    singleVlanPair.append(clientIdOldFormat)
+
+                    ### Check if there's static link and choose static VLANs
+                    if vlanIn == "0":
+                        if portIn in self.staticVlans:
+                            vlanIn = self.staticVlans[portIn]
+                        else:
+                            self.logger.debug("choosing static port VLAN")
+                            staticPortVlan = self.SEStaticLinkManager.chooseVlan(portIn)
+                            self.staticVlans[portIn] = staticPortVlan
+                            vlanIn = staticPortVlan
+                    if vlanOut == "0":
+                        if portOut in self.staticVlans:
+                            vlanOut = self.staticVlans[portOut]
+                        else:
+                            self.logger.debug("choosing static port VLAN")
+                            staticPortVlan = self.SEStaticLinkManager.chooseVlan(portOut)
+                            self.staticVlans[portOut] = staticPortVlan
+                            vlanOut = staticPortVlan
+
+
+                    singleVlanPairSrc = {}
+                    singleVlanPairSrc["port_id"] = prefix + "+" + dpid + "_" + portIn
+                    singleVlanPairSrc["vlan"] = vlanIn
+
+                    singleVlanPair.append(singleVlanPairSrc)
+
+                    singleVlanPairDst = {}
+                    singleVlanPairDst["port_id"] = prefix + "+" + dpid + "_" + portOut
+                    singleVlanPairDst["vlan"] = vlanOut
+
+                    singleVlanPair.append(singleVlanPairDst)
+
+                    print ">>>>>>>>   %s-%s <-> %s-%s" %(portIn, vlanIn, portOut, vlanOut)
+                    print ">>>>>>>>  prefix: ", prefix
+                    print ">>>>>>>>  dpid: ", dpid
+
+                    sliceVlanPairs.append(singleVlanPair)
+
+
+                else:
+                    sliceVlanPairs = self.parseOldRspecFromat()
+                    return sliceVlanPairs
+
+        return sliceVlanPairs
+
 
     #TODO: refactor/rename this method when test passed
     def parseNewRspecFormat (self):
@@ -178,9 +261,8 @@ class SERMv3RequestParser(TNRMv3RequestParser):
             srcVlan = src.split("?")[1].split("=")[-1]
 
             if srcVlan == "0":
-                # srcVlan = self.SEStaticLinkManager.chooseVlan(srcPort)
                 if srcPort in self.staticVlans:
-                    print "choosing static port VLAN"
+                    self.logger.debug("choosing static port VLAN")
                     staticPortVlan = self.SEStaticLinkManager.chooseVlan(srcPort)
                     self.staticVlans[srcPort] = staticPortVlan
 
@@ -193,9 +275,8 @@ class SERMv3RequestParser(TNRMv3RequestParser):
             dstVlan = dst.split("?")[1].split("=")[-1]
 
             if dstVlan == "0":
-                # dstVlan = self.SEStaticLinkManager.chooseVlan(dstPort)
                 if dstPort in self.staticVlans:
-                    print "choosing static port VLAN"
+                    self.logger.debug("choosing static port VLAN")
                     staticPortVlan = self.SEStaticLinkManager.chooseVlan(dstPort)
                     self.staticVlans[dstPort] = staticPortVlan
 
@@ -211,4 +292,12 @@ class SERMv3RequestParser(TNRMv3RequestParser):
             sliceVlanPairs.append(vlanPairs)
 
         return sliceVlanPairs
+
+    def searchVlanForPort(self, portClientId):
+        portsVlans = self.parseNewRspecFormat()
+        for cross in portsVlans:
+            for value in cross:
+                if isinstance(value, dict) and value['port_id'] == portClientId:
+                    return value['vlan']
+
 
