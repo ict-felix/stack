@@ -82,7 +82,8 @@ class seSlicesWithSlivers(object):
             
         return s_temp
     
-    def _create_manifest_from_req_n_and_l(self, se_manifest,nodes,links,sliceVlansPairs):
+    def _create_manifest_from_req_n_and_l(self, se_manifest,nodes,links,sliceVlansPairs, staticVlans): ### TODO:KDKDKD
+        print "VVVVVVVVVVVVVVVVV: ", staticVlans
         # TODO: Check if sliver_urn is valid for RO
         vlans = []
         vlanOnPort = []
@@ -97,8 +98,6 @@ class seSlicesWithSlivers(object):
             # Check if there is "felix:vlan" in link request
             if sliceVlansPairs != None:
                 component_id = l["component_id"]
-                print "HHHHHHH: ", component_id
-                print "HAHAHAH: ", sliceVlansPairs
                 # Check if the urn is in old or new format
                 #if "?" not in component_id or "port_id" in component_id:
                 # TODO: Rethink ths UGLY comaprison
@@ -120,6 +119,7 @@ class seSlicesWithSlivers(object):
                     l['sliver_id'] = sliver_id_name
 
                     se_manifest.link(l)
+                    
                 else:
                     print ">>> New RSpec version"
                     for vlanPairs in sliceVlansPairs:
@@ -137,11 +137,43 @@ class seSlicesWithSlivers(object):
                         except:
                             _out_port = _out_interface["port"].split("_")[-1]
 
+                        ### If static links get the data from sliceVlanPairs
+
+                        if "?vlan=0" in component_id:
+                            srcDst = component_id.split("-")
+
+                            src = srcDst[0].split("?vlan=")
+                            dst = srcDst[1].split("?vlan=")
+
+                            vlanIn = src[1]
+
+                            prefix, portIn = src[0].split("_")
+                            prefix, dpid = prefix.rsplit("+", 1)
+
+                            vlanOut = dst[1]
+                            portOut = dst[0].split("_")[1]
+
+                            if vlanIn == "0":
+                                vlanIn = staticVlans[portIn]
+
+                            if vlanOut == "0":
+                                vlanOut = staticVlans[portOut]
+
+                            componentIdOldFormat = prefix + "+" + dpid + "_" + portIn + "_" + dpid + "_" + portOut + "_" + vlanIn + "_" + vlanOut
+
+                            l['__vlan_pairs__'] = [portIn, vlanIn, portOut, vlanOut]
+                            l['vlantag'] = vlanIn + "-" + vlanOut
+                            l['component_id'] = componentIdOldFormat
+                            sliver_id_name = componentIdOldFormat.replace("datapath", "sliver")
+                            l['sliver_id'] = sliver_id_name
+
+
                         # Mega hack checkout, shame on me:
                         if ("vlan=" + _in_vlan) in component_id and \
                             ("vlan=" + _out_vlan) in component_id and \
                             ("_" + _in_port + "?") in component_id and \
                             ("_" + _out_port + "?") in component_id:
+
                             l['__vlan_pairs__'] = [_in_port, _in_vlan, _out_port, _out_vlan] 
 
                             l['vlantag'] = _in_vlan + "-" + _out_vlan
@@ -171,6 +203,7 @@ class seSlicesWithSlivers(object):
 
                             sliver_id_name = sliver_id_name.replace("datapath", "sliver")
                             l['sliver_id'] = sliver_id_name
+                        
 
                     se_manifest.link(l)
 

@@ -194,7 +194,6 @@ class SERMv3RequestParser(TNRMv3RequestParser):
 
 
                     clientIdOldFormat = prefix + "+" + dpid + "_" + portIn + "_" + dpid + "_" + portOut
-                    print clientIdOldFormat
 
                     singleVlanPair.append(clientIdOldFormat)
 
@@ -299,5 +298,8 @@ class SERMv3RequestParser(TNRMv3RequestParser):
             for value in cross:
                 if isinstance(value, dict) and value['port_id'] == portClientId:
                     return value['vlan']
+
+    def getStaticVlans(self):
+        return self.staticVlans
 
 
