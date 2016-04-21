@@ -200,7 +200,6 @@ class GENIv3Delegate(GENIv3DelegateBase):
         se_manifest, se_slivers, se_db_slivers = SERMv3ManifestFormatter(), [], []
         
         links = req_rspec.links()
-        print ">>>> links: ", links
         nodes = req_rspec.nodes(links=links)
 
         # Workaround for "1:n" case: Get Vlan pairs from link->felix:vlan param
@@ -223,11 +222,8 @@ class GENIv3Delegate(GENIv3DelegateBase):
                                                             reservation_ports['ports'],
                                                             slice_urn])
 
-            self.SESlices._create_manifest_from_req_n_and_l(se_manifest, nodes,links, sliceVlansPairs)
+            self.SESlices._create_manifest_from_req_n_and_l(se_manifest, nodes, links, sliceVlansPairs, req_rspec.getStaticVlans())
             logger.debug("SE-ManifestFormatter=%s" % (se_manifest,))
-
-            print ">>> nodes: ", nodes
-            print ">>> sliveVlanPairs: ", sliceVlansPairs
 
             s =  self.SESlices._allocate_ports_in_slice(nodes, sliceVlansPairs) 
                         
