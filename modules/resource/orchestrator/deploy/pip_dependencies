@@ -12,3 +12,5 @@ networkx
 apscheduler
 requests
 colorlog
+futures
+funcsigs
