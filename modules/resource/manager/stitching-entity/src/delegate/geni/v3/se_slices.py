@@ -82,7 +82,7 @@ class seSlicesWithSlivers(object):
             
         return s_temp
     
-    def _create_manifest_from_req_n_and_l(self, se_manifest,nodes,links,sliceVlansPairs, staticVlans): ### TODO:KDKDKD
+    def _create_manifest_from_req_n_and_l(self, se_manifest,nodes,links,sliceVlansPairs, staticVlans=None): ### TODO:KDKDKD
         print "VVVVVVVVVVVVVVVVV: ", staticVlans
         # TODO: Check if sliver_urn is valid for RO
         vlans = []
@@ -110,13 +110,13 @@ class seSlicesWithSlivers(object):
                             _in_port = _in_interface["port_id"].split("_")[-1]
                             _out_vlan = _out_interface["vlan"]
                             _out_port = _out_interface["port_id"].split("_")[-1]
-                        l['__vlan_pairs__'] = [_in_port, _in_vlan, _out_port, _out_vlan] 
+                            l['__vlan_pairs__'] = [_in_port, _in_vlan, _out_port, _out_vlan] 
 
-                    l['vlantag'] = _in_vlan + "-" + _out_vlan
-                    sliver_id_name = l["component_id"] + "_" + _in_vlan + "_" + _out_vlan
+                            l['vlantag'] = _in_vlan + "-" + _out_vlan
+                            sliver_id_name = l["component_id"] + "_" + _in_vlan + "_" + _out_vlan
 
-                    sliver_id_name = sliver_id_name.replace("datapath", "sliver")
-                    l['sliver_id'] = sliver_id_name
+                            sliver_id_name = sliver_id_name.replace("datapath", "sliver")
+                            l['sliver_id'] = sliver_id_name
 
                     se_manifest.link(l)
                     
