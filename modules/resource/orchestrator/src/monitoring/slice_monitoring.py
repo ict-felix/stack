@@ -138,6 +138,29 @@ class SliceMonitoring(BaseMonitoring):
                     inner_node_,
                     n.get("services")[0].get("login").get("hostname"))
 
+            # Links per node
+            vm_cid = n.get("sliver_id")
+            server_cid = vm_cid
+            server_cid_split = server_cid.split(":")
+            # Note: generate component_id of server from VM 
+            server_cid = ":".join(server_cid_split[:-2]) + \
+                "+node+" + server_cid_split[-2]
+
+            node_links = db_sync_manager.\
+                get_com_link_by_src_dst_links(server_cid)
+
+            for node_link in node_links:
+                for node_link_l in node_link.get("links"):
+                    eps = {"source_id": node_link_l.get("source_id"),
+                            "dest_id": node_link_l.get("dest_id")}
+                    if MonitoringUtils.check_existing_tag_in_topology(
+                            topology, "link", self.MS_LINK_TYPE,
+                            [eps.get("source_id"), eps.get("dest_id")]):
+                        break
+                    eps_src_id, eps_dst_id = self.__get_eps_ids(
+                        eps.get("source_id"), eps.get("dest_id"))
+                    self.__add_link_info(topology, eps_src_id, eps_dst_id, "lan")
+
     def __update_match_with_groups(self, match, groups):
         for mg in match.get("use_groups"):
             for g in groups:
@@ -199,10 +222,10 @@ class SliceMonitoring(BaseMonitoring):
             link_type = self.__translate_link_type(link_type)
             link_ = etree.Element("link")
             link_.set("type", link_type)
-            root = link_
         if MonitoringUtils.check_existing_tag_in_topology(
                 root, "link", link_type, [ep_src, ep_dst]):
             return
+        root = link_
         if link_type is not None:
             topology_tag.append(root)
         etree.SubElement(root, "interface_ref", client_id=ep_src)
@@ -264,41 +287,15 @@ class SliceMonitoring(BaseMonitoring):
                     topology, "node", id=dpid.get("component_id"),
                     type="switch")
 
-                for p in dpid.get("ports"):
-                    ifid = dpid.get("component_id") + "_" + str(p.get("num"))
-                    if_ = etree.SubElement(node_, "interface", id=ifid)
-
-                    etree.SubElement(if_, "port", num=str(p.get("num")))
-
-                    link_ids.append(
-                        self.__create_link_id(dpid.get("dpid"), p.get("num")))
+                # NOTE: do not append ports to dpid, different
+                # format is used between XEN-CRM and KVM-CRM
+                link_ids.append(
+                    self.__create_link_id(dpid.get("dpid"), ""))
 
                 self.__add_packet_info(node_, m.get("packet"))
 
         logger.info("add_sdn_resources Link identifiers(%d)=%s" %
                     (len(link_ids), link_ids,))
-        # C-SDN link info
-        for l in link_ids:
-            com_link = db_sync_manager.get_com_link_by_sdnkey(l)
-            if com_link:
-                logger.debug("COM link=%s" % (com_link,))
-                for eps in com_link.get("links"):
-                    if MonitoringUtils.check_existing_tag_in_topology(
-                            topology, "link", self.MS_LINK_TYPE,
-                            [eps.get("source_id"), eps.get("dest_id")]):
-                        break
-
-                    # Modify link on-the-fly to add the DPID port as needed
-                    eps = MonitoringUtilsLinks._set_dpid_port_from_link(
-                        com_link.get("component_id"), eps)
-
-                    eps_src_id, eps_dst_id = self.__get_eps_ids(
-                        eps.get("source_id"), eps.get("dest_id"))
-
-                    logger.info("eps_src_id=%s, eps_dst_id=%s" %
-                                (eps_src_id, eps_dst_id,))
-                    self.__add_link_info(topology, eps_src_id,
-                                         eps_dst_id, com_link.get("link_type"))
 
         # SDN-SDN link info
         ext_link_ids = self.__extend_link_ids(link_ids)
@@ -675,7 +672,7 @@ class SliceMonitoring(BaseMonitoring):
                          (self.__ms_url, e,))
 
     def serialize(self):
-        return etree.tostring(self.__topologies)
+        return etree.tostring(self.__topologies, pretty_print=True)
 
     def retrieve_topology(self, peer):
         # General information
