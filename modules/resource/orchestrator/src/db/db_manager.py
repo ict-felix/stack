@@ -416,9 +416,21 @@ class DBManager(object):
     def get_com_link_by_sdnkey(self, sdn_link_key):
         table = self.__get_table("resource.com.link")
         for l in self.__get_all(table, {}):
-            if l.get("component_id").endswith(sdn_link_key):
+            # if l.get("component_id").endswith(sdn_link_key):
+            if sdn_link_key in l.get("component_id"):
                 return l
         return None
+
+    def get_com_link_by_src_dst_links(self, link_id):
+        table = self.__get_table("resource.com.link")
+        com_links = []
+        for l in self.__get_all(table, {}):
+            links = l.get("links")
+            for l_link in links:
+                if link_id in l_link.get("source_id") or \
+                        link_id in l_link.get("dest_id"):
+                    com_links.append(l)
+        return com_links
 
     def get_com_interface_by_nodekey(self, com_node_key):
         table = self.__get_table("resource.com.link")
