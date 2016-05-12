@@ -193,12 +193,21 @@ class SliceMonitoring(BaseMonitoring):
             return self.TN2TN_LINK_TYPE
         return self.MS_LINK_TYPE
 
+    def __add_vlink_name(self, vlink_tag, index):
+	# the vlink name should be composed of the slicename and a suffix
+	slice_name = MonitoringUtils.find_slice_name(self.__topologies)
+	vlink_id = "%s%s%s" % (slice_name, ":end_link_", index)
+	logger.debug("vlink name: %s" % (vlink_id))
+        vlink_tag.attrib["id"] = vlink_id
+
     def __add_vlink_info(self, topology_tag, ep_src, ep_dst, link_type=None):
         # Virtual link differs w.r.t. a normal link
         # in that those have:
         # 1) ID (slice name and ID for virtual link)
         # 2) End-to-end SDN-SDN or SDN-TN link interfaces
         # 3) (TODO - Ideally) C-SDN link
+	logger.debug("add_vlink_info: epsrc=%s, epdst=%s, type=%s" %
+		     (ep_src, ep_dst, link_type))
         self.__add_link_info(topology_tag, ep_src, ep_dst, link_type)
         slice_name = MonitoringUtils.find_slice_name(self.__topologies)
         vlink_ids = MonitoringUtils.find_virtual_links(self.__topologies)
@@ -500,14 +509,14 @@ class SliceMonitoring(BaseMonitoring):
     def __add_island2island_tnlink(self, info, tag):
         tn_src = info.get("source")
         tn_dst = info.get("destination")
-        if MonitoringUtils.check_existing_tag_in_topology(
-                tag, "link", self.TN2TN_LINK_TYPE, [tn_src, tn_dst]):
-            return
+	# we need to insert the TN details in every virtual link
+        #if MonitoringUtils.check_existing_tag_in_topology(
+        #        tag, "link", self.TN2TN_LINK_TYPE, [tn_src, tn_dst]):
+        #    return
         tn_ = etree.SubElement(tag, "link",
                                type=self.TN2TN_LINK_TYPE, id=info.get("id"))
         etree.SubElement(tn_, "interface_ref", client_id=tn_src)
-        etree.SubElement(
-            tn_, "interface_ref", client_id=tn_dst)
+        etree.SubElement(tn_, "interface_ref", client_id=tn_dst)
 
     def __find_hybrid_endpoint(self, value):
         logger.debug("Finding the remote endpoint of %s" % (value,))
@@ -520,9 +529,9 @@ class SliceMonitoring(BaseMonitoring):
         return None
 
     def __add_island2island_lanlink(self, src, dst, tag):
-        if MonitoringUtils.check_existing_tag_in_topology(
-                tag, "link", self.MS_LINK_TYPE, [src, dst]):
-            return
+        #if MonitoringUtils.check_existing_tag_in_topology(
+        #        tag, "link", self.MS_LINK_TYPE, [src, dst]):
+        #    return
         logger.info("Lan link between %s and %s" % (src, dst,))
         if (src is not None) and (dst is not None):
             lan_ = etree.SubElement(tag, "link", type=self.MS_LINK_TYPE)
@@ -543,9 +552,9 @@ class SliceMonitoring(BaseMonitoring):
         return None, None
 
     def __add_island2island_selink(self, ident, src, dst, tag):
-        if MonitoringUtils.check_existing_tag_in_topology(
-                tag, "link", self.MS_LINK_TYPE, [src, dst]):
-            return
+        #if MonitoringUtils.check_existing_tag_in_topology(
+        #        tag, "link", self.MS_LINK_TYPE, [src, dst]):
+        #    return
         logger.info("Se link (%s) between %s and %s" % (ident, src, dst,))
         if (ident is not None) and (src is not None) and (dst is not None):
             se_ = etree.SubElement(
@@ -565,8 +574,10 @@ class SliceMonitoring(BaseMonitoring):
 
     def __add_virtual_link(self, link_subset):
         try:
+	    logger.debug("add_virtual_link: %s" % (link_subset))
             end2end_links = MonitoringUtils.\
                 find_virtual_link_end_to_end(self.__hybrid_links)
+	    logger.debug("add_virtual_link: %s" % (end2end_links))
             # TODO Check: what about 1 or >2 islands involved in slice?
             # For loop (step: 2, reason: finding SDN#1 port <--> SDN#2 port)
             for i in xrange(0, len(end2end_links)+1, 2):
@@ -586,10 +597,12 @@ class SliceMonitoring(BaseMonitoring):
                     (len(self.__tn_links), len(self.__se_links),
                      len(self.__hybrid_links),))
 
-        virtual_ = etree.SubElement(topology, "link", type="sdn")
+	# do not create a virtual link here: we can use the TN info.
+        #virtual_ = etree.SubElement(topology, "link", type="sdn")
 
         # Add virtual link
-        self.__add_virtual_link(virtual_)
+	# do not sure what we can do here.
+        #self.__add_virtual_link(virtual_)
 
         # for sdn_link in self.__sdn_links:
         #     logger.info("SDN-link=%s" % (sdn_link,))
@@ -598,64 +611,72 @@ class SliceMonitoring(BaseMonitoring):
         #           virtual_, sdn_link.get("source"),
         #           sdn_link.get("destination"), self.MS_LINK_TYPE)
 
-        for se_link in self.__se_links:
+	# commented out these lines (not sure, talk with carolina)
+        #for se_link in self.__se_links:
             # if MonitoringUtils.check_existing_tag_in_topology(
             #         virtual_, "link", None,
             #         [se_link.get("source"), se_link.get("destination")]):
             #     break
-            logger.info("SE-link=%s" % (se_link,))
+        #    logger.info("SE-link=%s" % (se_link,))
             # Adding SE-to-SDN or SE-to-TN link
-            self.__add_link_info(virtual_, se_link.get("source"),
-                                 se_link.get("destination"), self.MS_LINK_TYPE)
+        #    self.__add_link_info(virtual_, se_link.get("source"),
+        #                         se_link.get("destination"), self.MS_LINK_TYPE)
 
-        for se_link in self.__hybrid_links:
+        #for se_link in self.__hybrid_links:
             # if MonitoringUtils.check_existing_tag_in_topology(
             #         virtual_, "link", self.MS_LINK_TYPE,
             #         [se_link.get("source"), se_link.get("destination")]):
             #     break
-            logger.info("SE-hybrid-link=%s" % (se_link,))
+        #    logger.info("SE-hybrid-link=%s" % (se_link,))
             # Adding SE-to-SDN or SE-to-TN link
-            self.__add_link_info(virtual_, se_link.get("source"),
-                                 se_link.get("destination"), self.MS_LINK_TYPE)
+        #    self.__add_link_info(virtual_, se_link.get("source"),
+        #                         se_link.get("destination"), self.MS_LINK_TYPE)
 
+	# iterate over the TN resources to create the proper virtual links
+	i = 0
         for tn_link in self.__tn_links:
             logger.info("TN-link=%s" % (tn_link,))
 
+	    vlink_ = etree.SubElement(topology, "link", type="sdn")
+	    self.__add_vlink_name(vlink_, i)
+
             # Add the tn link info into the virtual island2island info
-            self.__add_island2island_tnlink(tn_link, virtual_)
+            self.__add_island2island_tnlink(tn_link, vlink_)
 
             # Add the hybrid link between the source tn and se interface
             se_if_src = self.__find_hybrid_endpoint(tn_link.get("source"))
             self.__add_island2island_lanlink(
-                tn_link.get("source"), se_if_src, virtual_)
+                tn_link.get("source"), se_if_src, vlink_)
 
             # Add the hybrid link between the destination tn and se interface
             se_if_dst = self.__find_hybrid_endpoint(tn_link.get("destination"))
             self.__add_island2island_lanlink(
-                tn_link.get("destination"), se_if_dst, virtual_)
+                tn_link.get("destination"), se_if_dst, vlink_)
 
             # Add the se link in the "source" island
             se_internal_src, se_id_src = self.__find_se_endpoint(se_if_src)
             self.__add_island2island_selink(
-                se_id_src, se_if_src, se_internal_src, virtual_)
+                se_id_src, se_if_src, se_internal_src, vlink_)
 
             # Add the se link in the "destination" island
             se_internal_dst, se_id_dst = self.__find_se_endpoint(se_if_dst)
             self.__add_island2island_selink(
-                se_id_dst, se_if_dst, se_internal_dst, virtual_)
+                se_id_dst, se_if_dst, se_internal_dst, vlink_)
 
             # Add the hybrid link between "source" se and sdn interface
             sdn_if_src = self.__find_hybrid_endpoint(se_internal_src)
             self.__add_island2island_lanlink(
-                se_internal_src, sdn_if_src, virtual_)
+                se_internal_src, sdn_if_src, vlink_)
 
             # Add the hybrid link between "destination" se and sdn interface
             sdn_if_dst = self.__find_hybrid_endpoint(se_internal_dst)
             self.__add_island2island_lanlink(
-                se_internal_dst, sdn_if_dst, virtual_)
+                se_internal_dst, sdn_if_dst, vlink_)
 
             # Finally, add the sdn interfaces
-            self.__add_island2island_sdnif(sdn_if_src, sdn_if_dst, virtual_)
+            self.__add_island2island_sdnif(sdn_if_src, sdn_if_dst, vlink_)
+
+	    i += 1
 
     def send(self):
         try:
