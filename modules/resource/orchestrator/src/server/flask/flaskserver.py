@@ -193,7 +193,8 @@ class FlaskServer(object):
                 # application = DebuggedApplication(self._app, True)
 
                 # Set up an SSL context
-                context = SSL.Context(SSL.SSLv23_METHOD)
+                # context = SSL.Context(SSL.SSLv23_METHOD)
+                context = SSL.Context(SSL.TLSv1_METHOD)
                 certs_path = os.path.normpath(os.path.join(
                     os.path.dirname(__file__), "../../..", "cert"))
                 context_crt = os.path.join(certs_path, "server.crt")
@@ -222,7 +223,13 @@ class FlaskServer(object):
                         # FIXME: what works with webapp does not with CLI
                         server.ssl_context.set_verify(
                             SSL.VERIFY_PEER |
-                            SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
+                            SSL.VERIFY_FAIL_IF_NO_PEER_CERT |
+                            # Ignoring certs unless SSL.VERIFY_PEER is set
+                            SSL.VERIFY_CLIENT_ONCE,
+                            lambda a, b, c, d, e: True)
+                    else:
+                        server.ssl_context.set_verify(
+                            SSL.VERIFY_NONE,
                             lambda a, b, c, d, e: True)
                     # Before entering loop, start supplementary services
                     for s in services:
