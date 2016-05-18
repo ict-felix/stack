@@ -4,6 +4,6 @@
 *.swp
 .project
 .pydevproject
+db/*
 modules/resource/orchestrator/conf/*.json
 modules/resource/orchestrator/conf/policies.txt
-db/*

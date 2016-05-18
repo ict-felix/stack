@@ -3,6 +3,7 @@ from core.config import ConfParser
 from credentials.cred_util import CredentialVerifier
 from os.path import abspath, dirname, join
 import ast
+import glob
 
 class ConfigStructure:
     def __init__(self, **entries): 
@@ -83,9 +84,22 @@ class GCFCredentialManager(CredentialManagerBase):
 
     def __clean_credentials(self, credentials):
         creds = list()
-        for cred  in credentials:
+        for cred in credentials:
             if cred.get("geni_value"):
                 creds.append(cred["geni_value"])
-            else: 
+            else:
                 creds.append(cred)
         return creds
+
+    # speaks-for
+    def get_speaks_for_cred(self):
+        """
+        Loads and returns speaks-for credentials available under cred dir
+        """
+        cred_path = abspath(join(dirname(self.__trusted_certs), "..", "cred/"))
+        cred_files = glob.glob(cred_path+'speaks-for*.xml')  # speaks-for-<org>-<issuer>-<target>.xml
+        speaks_for_creds = []
+        for f in cred_files:
+            with open(f, 'r') as xmlfile:
+                speaks_for_creds.append({'geni_value': xmlfile.read(), 'geni_version': '3', 'geni_type': 'geni_abac'})
+        return speaks_for_creds

@@ -1,4 +1,4 @@
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # Copyright (c) 2010-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -19,14 +19,12 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 from extensions.sfa.util.xrn import hrn_authfor_hrn
 '''
 Credential creation and verification utilities.
 '''
 import os
-import logging
-import xmlrpclib
 import sys
 import datetime
 import dateutil
@@ -39,7 +37,8 @@ from extensions.sfa.trust.certificate import Certificate
 from extensions.sfa.trust.credential_factory import CredentialFactory
 from extensions.sfa.trust.abac_credential import ABACCredential
 
-from extensions.sfa.trust.speaksfor_util import determine_speaks_for
+from extensions.sfa.trust.speaksfor_util import determine_speaks_for_ex
+
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.
@@ -54,8 +53,9 @@ def naiveUTC(dt):
         dt = dt.replace(tzinfo=None)
     return dt
 
+
 class CredentialVerifier(object):
-    """Utilities to verify signed credentials from a given set of 
+    """Utilities to verify signed credentials from a given set of
     root certificates. Will compare target and source URNs, and privileges.
     See verify and verify_from_strings methods in particular."""
 
@@ -150,26 +150,25 @@ class CredentialVerifier(object):
         # Potentially, change gid_string to be the cert of the actual user 
         # if this is a 'speaks-for' invocation
         speaksfor_gid = \
-            determine_speaks_for(None, \
+            determine_speaks_for_ex(None, \
             cred_strings, # May include ABAC speaks_for credential
             caller_gid, # Caller cert (may be the tool 'speaking for' user)
             options, # May include 'geni_speaking_for' option with user URN
             root_certs
             )
         if caller_gid.get_subject() != speaksfor_gid.get_subject():
-            speaksfor_urn = speaksfor_gid.get_urn()
+            # speaksfor_urn = speaksfor_gid.get_urn()
             caller_gid = speaksfor_gid
 
-
         # Remove the abac credentials
-        cred_strings = [cred_string for cred_string in cred_strings \
+        cred_strings = [cred_string for cred_string in cred_strings
                             if CredentialFactory.getType(cred_string) == cred.Credential.SFA_CREDENTIAL_TYPE]
 
         return self.verify(caller_gid,
                            map(make_cred, cred_strings),
                            target_urn,
                            privileges)
-        
+
     def verify_source(self, source_gid, credential):
         '''Ensure the credential is giving privileges to the caller/client.
         Return True iff the given source (client) GID's URN
@@ -213,17 +212,17 @@ class CredentialVerifier(object):
         result = True
         privs = credential.get_privileges()
         for priv in privileges:
-            
+
             if not privs.can_perform(priv):
                 result = False
         return result
 
     def verify(self, gid, credentials, target_urn, privileges):
         '''Verify that the given Source GID supplied at least one credential
-        in the given list of credentials that has all the privileges required 
+        in the given list of credentials that has all the privileges required
         in the privileges list on the given target.
-        IE if any of the supplied credentials has a caller that matches gid 
-        and a target that matches target_urn, and has all the privileges in 
+        IE if any of the supplied credentials has a caller that matches gid
+        and a target that matches target_urn, and has all the privileges in
         the given list, then return the list of credentials that were ok.
         Throw an Exception if we fail to verify any credential.'''
 
@@ -246,7 +245,7 @@ class CredentialVerifier(object):
                 cS = cred.get_summary_tostring()
             else:
                 cS = "Unknown credential type %s" % cred.get_cred_type()
-            
+
             if tried_creds != "":
                 tried_creds = "%s, %s" % (tried_creds, cS)
             else:
@@ -255,10 +254,10 @@ class CredentialVerifier(object):
                 failure = "Not an SFA credential: " + cS
                 continue
 
-            #if not self.verify_source(gid, cred):
-            #    failure = "Cred %s fails: Credential doesn't grant rights to you (%s), but to %s (over object %s)" % (cred.get_gid_caller().get_urn(), gid.get_urn(), cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn())
-            #    continue
-         
+#            if not self.verify_source(gid, cred):
+#                failure = "Cred %s fails: Credential doesn't grant rights to you (%s), but to %s (over object %s)" % (cred.get_gid_caller().get_urn(), gid.get_urn(), cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn())
+#                continue
+
             if not self.verify_target(target_urn, cred):
                 failure = "Cred granting rights to %s on %s fails: It grants permissions over a different target, not %s (URNs dont match)" % (cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn(), target_urn)
                 continue
@@ -329,9 +328,9 @@ def create_credential(caller_gid, object_gid, expiration, typename, issuer_keyfi
     if not (object_gid.get_urn() == issuer_gid.get_urn() or 
         (issuer_gid.get_type().find('authority') == 0 and
          hrn_authfor_hrn(issuer_gid.get_hrn(), object_gid.get_hrn()))):
-        raise ValueError("Issuer not authorized to issue credential: Issuer=%s  Target=%s" % (issuer_gid.get_urn(), object_gid.get_urn()))
-    
-
+        raise ValueError("Issuer not authorized to issue credential: \
+            Issuer=%s  Target=%s" %
+            (issuer_gid.get_urn(), object_gid.get_urn()))
 
     ucred = cred.Credential()
     # FIXME: Validate the caller_gid and object_gid
@@ -356,12 +355,11 @@ def create_credential(caller_gid, object_gid, expiration, typename, issuer_keyfi
     ucred.encode()
     ucred.set_issuer_keys(issuer_keyfile, issuer_certfile)
     ucred.sign()
-    
+
     try:
         ucred.verify(trusted_roots)
     except Exception, exc:
-        raise Exception("Create Credential failed to verify new credential from trusted roots: %s" % exc)
+        raise Exception("Create Credential failed to verify new \
+            credential from trusted roots: %s" % exc)
 
     return ucred
-
-

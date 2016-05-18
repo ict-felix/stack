@@ -19,7 +19,8 @@ class SDNUtils(CommonUtils):
         try:
             adaptor, uri = AdaptorFactory.create_from_db(peer)
             logger.debug("Adaptor=%s, uri=%s" % (adaptor, uri))
-            m, urn, ss = adaptor.describe(urns, creds[0]["geni_value"])
+            # m, urn, ss = adaptor.describe(urns, creds[0]["geni_value"])
+            m, urn, ss = adaptor.describe(urns, creds)
 
             manifest = OFv3ManifestParser(from_string=m)
             logger.debug("OFv3ManifestParser=%s" % (manifest,))
@@ -38,7 +39,8 @@ class SDNUtils(CommonUtils):
             adaptor, uri = AdaptorFactory.create_from_db(peer)
             logger.debug("Adaptor=%s, uri=%s" % (adaptor, uri))
             m, urn = adaptor.provision(
-                urns, creds[0]["geni_value"], beffort, etime, gusers)
+                # urns, creds[0]["geni_value"], beffort, etime, gusers)
+                urns, creds, beffort, etime, gusers)
 
             manifest = OFv3ManifestParser(from_string=m)
             logger.debug("OFv3ManifestParser=%s" % (manifest,))

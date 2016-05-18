@@ -101,6 +101,8 @@ class FlaskServer(object):
         self.auth_category = self.config.get("auth.conf")
         self.certificates_auth_section = \
             self.auth_category.get("certificates")
+        self.credentials_auth_section = \
+            self.auth_category.get("credentials")
         # Verification and certificates
         self._verify_users =\
             ast.literal_eval(
@@ -167,6 +169,9 @@ class FlaskServer(object):
         must_have_client_cert = \
             ast.literal_eval(self.certificates_flask_section.get(
                 "force_client_certificate"))
+        #must_use_speaks_for = \
+        #    ast.literal_eval(self.credentials_auth_section.get(
+        #        "speaks_for"))
         if cFCGI:
             logger.info("registering fcgi server at %s:%i", host, fcgi_port)
             from flup.server.fcgi import WSGIServer
@@ -193,7 +198,8 @@ class FlaskServer(object):
                 # application = DebuggedApplication(self._app, True)
 
                 # Set up an SSL context
-                context = SSL.Context(SSL.SSLv23_METHOD)
+                # context = SSL.Context(SSL.SSLv23_METHOD)
+                context = SSL.Context(SSL.TLSv1_METHOD)
                 certs_path = os.path.normpath(os.path.join(
                     os.path.dirname(__file__), "../../..", "cert"))
                 context_crt = os.path.join(certs_path, "server.crt")
@@ -219,10 +225,17 @@ class FlaskServer(object):
                     #     False, ssl_context=(context_crt, context_key))
                     # Following line is the reason why I copied all that code!
                     if must_have_client_cert:
+                    #if must_have_client_cert or must_use_speaks_for:
                         # FIXME: what works with webapp does not with CLI
                         server.ssl_context.set_verify(
                             SSL.VERIFY_PEER |
-                            SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
+                            SSL.VERIFY_FAIL_IF_NO_PEER_CERT |
+                            # Ignoring certs unless SSL.VERIFY_PEER is set
+                            SSL.VERIFY_CLIENT_ONCE,
+                            lambda a, b, c, d, e: True)
+                    else:
+                        server.ssl_context.set_verify(
+                            SSL.VERIFY_NONE,
                             lambda a, b, c, d, e: True)
                     # Before entering loop, start supplementary services
                     for s in services:
