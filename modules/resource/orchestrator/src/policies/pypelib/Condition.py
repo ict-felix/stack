@@ -1,4 +1,7 @@
+import ast
+import datetime
 import os
+import re
 import sys
 import time
 
@@ -84,7 +87,6 @@ class Condition():
 
 	#Constructor
 	def __init__(self, left, right, operator,negate=False):
-
 		self._leftOperand = left
 		self._rightOperand = right
 		self._operator = operator
@@ -152,6 +154,19 @@ class Condition():
 				negate="not "
 			return " %s %s %s %s   "%(negate,self._leftOperand,str(self._operator),str(self._rightOperand))
 
+	def rfc3339_to_datetime(self, date):
+		"""
+		Returns a datetime object from an input string formatted
+		according to RFC3339.
+
+		Ref: https://github.com/fp7-ofelia/ocf/blob/ofelia.development/core/
+			lib/am/ambase/src/geni/v3/handler/handler.py#L321-L332
+		"""
+		date_form = re.sub(r'[\+|\.].+', "", date)
+		formatted_date = datetime.datetime.strptime(
+			date_form.replace("T", " ").
+			replace("Z", ""), "%Y-%m-%d %H:%M:%S")
+		return formatted_date
 
 	#Evaluate condition
 	def evaluate(self, metaObj,resolver):
@@ -164,7 +179,6 @@ class Condition():
 			rightValue = self._rightOperand.evaluate(metaObj,resolver)	
 		else:
 			#Try to retrieve value from the context (if it is not a literal)
-
 			if Collection.isCollection(self._rightOperand):
 				rightValue = self._rightOperand
 			else:
@@ -176,10 +190,44 @@ class Condition():
 
 			#Try to first resolve (allow string based comparison)
 			try:
-				leftValue = resolver.resolve(self._leftOperand,metaObj)
+				if self._operator != "in":
+					try:
+						leftKey = self._leftOperand.split(".")[0]
+						leftValue = self._leftOperand.split(".")[1]
+					except:
+						leftKey = self._leftOperand
+						leftValue = self._leftOperand
+					if self._leftOperand in resolver._mappings and leftKey in metaObj.keys():
+						if leftKey in metaObj.keys() and leftValue in metaObj.get(leftKey):
+							leftValue = resolver.resolve(self._leftOperand,metaObj)
+						else:
+							# If key or value not available, eval to False (== ignore)
+							return False
+					else:
+						# If key or value not available, eval to False (== ignore)
+						return False
+				else:
+					leftValue =  self._leftOperand
+					try:
+						rightValues = self._rightOperand
+						valuesList = []
+						for i in xrange(len(rightValues)):
+							singleRightKey = rightValues[i].split(".")[0].strip()
+							singleRightValue = rightValues[i].split(".")[1].strip()
+							if singleRightKey in metaObj.keys() and singleRightValue in metaObj.get(singleRightKey):
+								rightValues[i] = resolver.resolve(rightValues[i],metaObj)
+						rightValue = rightValues
+					except:
+						rightKey = rightValue = self._rightOperand
+						if self._rightOperand in resolver._mappings and rightKey in metaObj.keys():
+							if rightValue in metaObj.get(rightKey):
+								rightValue = resolver.resolve(self._rightOperand,metaObj)
+			# If key not found, key is used as it is for left operand
 			except:
+				import traceback
+				print traceback.print_exc()
 				leftValue =  self._leftOperand
-
+				rightValue = self._rightOperand
 
 		#Adjusting types for numeric comparison
 		if (type(rightValue) != type(leftValue)) and (self._operator not in _rangeOperators ) and (self._operator not in _collectionOperators):
@@ -190,10 +238,17 @@ class Condition():
 
 		#for simple conditions and str Values allow only == or !=
 		if (type(leftValue) == str and type(rightValue) == str) and (self._operator not in ["=","!="]):
-			raise Exception("Unknown operation over string or unresolvable keyword")
+			err_msg = "Unknown operation over string or unresolvable keyword"
+			date = datetime.datetime.now()
+			try:
+				# Strings with dates can be properly compared -- do not break execution
+				self.rfc3339_to_datetime(leftValue)
+				self.rfc3339_to_datetime(rightValue)
+			except:
+				raise Exception(err_msg)
 		
 		#Perform comparison and return value
-		if self._operator == "=":
+		if self._operator == "=" or self._operator == "==":
 			return self._negate ^ (leftValue == rightValue)
 		elif self._operator == "!=":
 			return self._negate ^ (leftValue != rightValue)
@@ -206,7 +261,9 @@ class Condition():
 		elif self._operator == "<=":
 			return self._negate ^ (leftValue <= rightValue)
 		elif self._operator == "in":
-			return self._negate ^ (leftValue in rightValue)
+#			Now the rightValue is transformed to a string in order to be able to use the "in" operator when rightValue is a list
+#			return self._negate ^ (leftValue in rightValue)
+			return self._negate ^ (leftValue in ''.join(rightValue))
 		elif self._operator == "[]":
 			return self._negate ^ (Range.isInRange(leftValue,self._rightOperand))	
 		elif self._operator == "{}":

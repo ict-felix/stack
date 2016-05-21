@@ -21,7 +21,7 @@ class PersistenceEngine():
 	_drivers = ["Django","RAWFile","SQLAlchemy"]
 
 	#Fill with appropiate path
-	PATH_TO_DRIVERS="backends"
+	PATH_TO_DRIVERS = "policies.pypelib.persistence.backends"
 	
 	def __init__(self):
 		raise Exception("Static class cannot be instanciated")	

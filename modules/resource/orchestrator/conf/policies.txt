@@ -1,0 +1,12 @@
+if ( i2cat not in collection {credential.owner_urn} ) then deny
+#if ( credential.owner_urn != urn:publicid:IDN+cbas.i2cat.net+user+alice ) then deny
+#
+if ( request.REMOTE_ADDR != 127.0.0.1 ) then deny
+if ( xmlrpclib.py not in collection {request.HTTP_USER_AGENT} ) then deny
+#
+if ( i2cat not in collection {credential.owner_urn} ) then deny
+#if ( urn:publicid:IDN+cbas.i2cat.net+user+alice not in collection {credential.owner_urn} ) then deny
+#if ( credential.expires <= 2016-05-25T10:29:53Z ) then deny
+#
+#if ( request.REMOTE_ADDR = 127.0.0.1 ) then accept
+#if ( request.HTTP_USER_AGENT = xmlrpclib.py/1.0.1 \(by www.pythonware.com\) ) then accept

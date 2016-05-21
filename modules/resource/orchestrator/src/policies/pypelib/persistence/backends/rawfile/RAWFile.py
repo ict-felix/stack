@@ -7,7 +7,7 @@ try:
 except:
    import pickle
 from threading import Thread, Lock
-from pypelib.resolver.Resolver import Resolver
+from policies.pypelib.resolver.Resolver import Resolver
 
 '''
         @author: lbergesio,omoya,cbermudo
@@ -44,7 +44,7 @@ class RAWFile():
 			if not kwargs["fileName"]:
 				raise Exception("FileName is required")
 		
-			fileObj = open(kwargs["fileName"], "r" )
+			fileObj = open(kwargs["fileName"], "rb" )
 			table = pickle.load(fileObj)
 			table._mutex = Lock()
 			table._mappings = resolverMappings
