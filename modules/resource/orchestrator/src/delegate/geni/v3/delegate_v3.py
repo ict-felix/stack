@@ -49,6 +49,15 @@ class GENIv3Delegate(GENIv3DelegateBase):
         self._interdomain_available_to_user =\
             ast.literal_eval(ConfParser("ro.conf").get("resources").
                              get("interdomain_available_to_user"))
+        self._transport_vlans_enabled =\
+            ast.literal_eval(ConfParser("transport.conf").get("vlan").
+                             get("enabled"))
+        self._transport_vlans_disabled =\
+            ast.literal_eval(ConfParser("transport.conf").get("vlan").
+                             get("disabled"))
+        self._transport_vlans_trans =\
+            ast.literal_eval(ConfParser("transport.conf").get("vlan").
+                             get("enabled_translation"))
 
     def trace_method_inputs(f):
         as_ = f.func_code.co_varnames[:f.func_code.co_argcount]
@@ -220,8 +229,12 @@ class GENIv3Delegate(GENIv3DelegateBase):
             if CommonUtils.is_implicit_allocation(req_rspec):
                 logger.info("Implicit resource allocation: without \
                     SE, without TN")
+                transport_vlans = {"enabled": self._transport_vlans_enabled,
+                                   "disabled": self._transport_vlans_disabled,
+                                   "translation": self._transport_vlans_trans}
                 rspec = TNUtils.add_tn_to_ro_request_rspec(
-                    req_rspec, SDNUtils(), VLUtils())
+                    req_rspec, SDNUtils(), VLUtils(),
+                    transport_vlans)
                 req_rspec = RORequestParser(from_string=rspec)
             if not CommonUtils.is_explicit_tn_allocation_orig(req_rspec):
                 # Before starting the allocation process, we need to find
