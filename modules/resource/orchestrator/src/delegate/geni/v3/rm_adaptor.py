@@ -2,9 +2,13 @@ from core import dates
 from core.peers import AllowedPeers
 from db.db_manager import db_sync_manager
 from delegate.geni.v3 import exceptions
-
+from core.config import ConfParser
+from os.path import abspath, dirname, join
+import ast
 import core
 import xmlrpclib
+import sys
+
 
 logger = core.log.getLogger("rmadaptor")
 
@@ -23,9 +27,53 @@ def format_uri(protocol, user, password, address, port, endpoint):
     return uri
 
 
+class SafeTransportWithCert(xmlrpclib.SafeTransport):
+    """
+    Helper class to force the right certificate for the transport class.
+    """
+    def __init__(self, key_path, cert_path):
+
+        if sys.version_info >= (2, 7, 9):
+            import ssl
+            xmlrpclib.SafeTransport.__init__(
+                self,
+                context=ssl._create_unverified_context())
+        else:
+            # No super (old-syle classe)
+            xmlrpclib.SafeTransport.__init__(self)
+        self._key_path = key_path
+        self._cert_path = cert_path
+
+    def make_connection(self, host):
+        """
+        This method will automatically be called by the ServerProxy class
+        when a transport channel is needed.
+        """
+        host_with_cert = (host,
+                          {"key_file": self._key_path,
+                           "cert_file": self._cert_path})
+        # No super (old-syle classe)
+        return xmlrpclib.SafeTransport.make_connection(self, host_with_cert)
+
+
 class AdaptorFactory(xmlrpclib.ServerProxy):
     def __init__(self, uri):
-        xmlrpclib.ServerProxy.__init__(self, uri)
+        try:
+            abs_path = dirname(dirname(dirname(abspath(__file__))))
+            abs_path = join(abs_path, "../../")
+            trusted_certs =\
+                abspath(join(abs_path, ast.literal_eval(
+                             ConfParser("auth.conf").get("certificates").
+                             get("cert_root"))))
+
+            root_cert = join(dirname(trusted_certs), "server.crt")
+            root_cert_key = join(dirname(trusted_certs), "server.key")
+            transport = SafeTransportWithCert(root_cert_key, root_cert)
+        except Exception as e:
+            logger.error("Failed to load server cert or key from " +
+                         str(trusted_certs) + ". Details: " + str(e))
+
+        xmlrpclib.ServerProxy.__init__(self, uri, transport=transport)
 
     @staticmethod
     def get_am_info(uri, id):
@@ -179,9 +227,20 @@ class GENIv3Client(SFAClient):
 
     def format_credentials(self, credentials):
         # Credentials must be sent in the proper format
-        credentials = [{"geni_value": credentials,
-                        "geni_type": "geni_sfa", }]
-        return credentials
+        formated_creds = []
+
+        if not type(credentials) == list:
+            credentials = [credentials]
+
+        for cred in credentials:
+            if not type(cred) == dict:
+                formated_creds.append({"geni_value": cred,
+                                       "geni_type": "geni_sfa",
+                                       "geni_version": "3"})
+            else:
+                formated_creds.append(cred)
+
+        return formated_creds
 
     def list_resources(self, credentials, available, inner_call=True):
         options = self.format_options(available=available, compress=False)

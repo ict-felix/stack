@@ -28,6 +28,8 @@ class GENIv3Handler(xmlrpc.Dispatcher):
             ast.literal_eval(ConfParser("auth.conf").get("certificates").
                              get("verify_users"))
         self.__credential_manager = GCFCredentialManager()
+        self.__speaks_for_cred = \
+            self.__credential_manager.get_speaks_for_cred()
 
     def setDelegate(self, geniv3delegate):
         self._delegate = geniv3delegate
@@ -86,13 +88,15 @@ class GENIv3Handler(xmlrpc.Dispatcher):
     def ListResources(self, credentials, options):
         """Delegates the call and unwraps the needed parameter.
         Also takes care of the compression option."""
-        self.__validate_credentials(credentials)
+
+        self.__validate_credentials(list(credentials))
 
         logger.debug("ListResources options=%s" % (options,))
         # Interpret options
         geni_available = self._option(options, "geni_available")
         inner_call = self._option(options, "inner_call")
-
+        # Append speaks-for cred
+        credentials = credentials + self.__speaks_for_cred
         # check version and delegate
         try:
             self._checkRSpecVersion(options["geni_rspec_version"])
@@ -110,9 +114,11 @@ class GENIv3Handler(xmlrpc.Dispatcher):
     def Describe(self, urns, credentials, options):
         """Delegates the call and unwraps the needed parameter.
         Also takes care of the compression option."""
-        self.__validate_credentials(credentials)
+        self.__validate_credentials(list(credentials))
 
         logger.debug("Describe urns=%s, options=%s" % (urns, options,))
+        # Append speaks-for cred
+        credentials = credentials + self.__speaks_for_cred
 
         try:
             self._checkRSpecVersion(options["geni_rspec_version"])
@@ -134,7 +140,11 @@ class GENIv3Handler(xmlrpc.Dispatcher):
         """Delegates the call and unwraps the needed parameter.
         Also converts the incoming timestamp to python and the outgoing
         to geni compliant date format."""
-        self.__validate_credentials(credentials)
+        # Send a 'copy' of creds for validation
+        self.__validate_credentials(list(credentials))
+
+        # Append speaks-for cred
+        credentials = credentials + self.__speaks_for_cred
 
         logger.debug("Allocate urn=%s, options=%s" % (slice_urn, options,))
         geni_end_time = None
@@ -160,7 +170,9 @@ class GENIv3Handler(xmlrpc.Dispatcher):
         return self._successReturn(result)
 
     def Renew(self, urns, credentials, expiration_time_str, options):
-        self.__validate_credentials(credentials)
+        self.__validate_credentials(list(credentials))
+        # Append speaks-for cred
+        credentials = credentials + self.__speaks_for_cred
 
         logger.debug("Renew urns=%s, options=%s" % (urns, options,))
         geni_best_effort = self._option(options, "geni_best_effort")
@@ -179,7 +191,9 @@ class GENIv3Handler(xmlrpc.Dispatcher):
         return self._successReturn(result)
 
     def Provision(self, urns, credentials, options):
-        self.__validate_credentials(credentials)
+        self.__validate_credentials(list(credentials))
+        # Append speaks-for cred
+        credentials = credentials + self.__speaks_for_cred
 
         logger.debug("Provision urns=%s, options=%s" % (urns, options,))
         geni_best_effort = self._option(options, "geni_best_effort")
@@ -204,7 +218,9 @@ class GENIv3Handler(xmlrpc.Dispatcher):
         return self._successReturn(result)
 
     def Status(self, urns, credentials, options):
-        self.__validate_credentials(credentials)
+        self.__validate_credentials(list(credentials))
+        # Append speaks-for cred
+        credentials = credentials + self.__speaks_for_cred
 
         logger.debug("Status urns=%s, options=%s" % (urns, options,))
         try:
@@ -220,7 +236,9 @@ class GENIv3Handler(xmlrpc.Dispatcher):
         return self._successReturn(result)
 
     def PerformOperationalAction(self, urns, credentials, action, options):
-        self.__validate_credentials(credentials)
+        self.__validate_credentials(list(credentials))
+        # Append speaks-for cred
+        credentials = credentials + self.__speaks_for_cred
 
         logger.debug("PerformOperationalAction urns=%s, options=%s" %
                      (urns, options,))
@@ -238,7 +256,9 @@ class GENIv3Handler(xmlrpc.Dispatcher):
         return self._successReturn(result)
 
     def Delete(self, urns, credentials, options):
-        self.__validate_credentials(credentials)
+        self.__validate_credentials(list(credentials))
+        # Append speaks-for cred
+        credentials = credentials + self.__speaks_for_cred
 
         logger.debug("Delete urns=%s, options=%s" % (urns, options,))
         geni_best_effort = self._option(options, "geni_best_effort")
@@ -255,7 +275,9 @@ class GENIv3Handler(xmlrpc.Dispatcher):
         return self._successReturn(result)
 
     def Shutdown(self, slice_urn, credentials, options):
-        self.__validate_credentials(credentials)
+        self.__validate_credentials(list(credentials))
+        # Append speaks-for cred
+        credentials = credentials + self.__speaks_for_cred
 
         logger.debug("Shutdown urn=%s, options=%s" % (slice_urn, options,))
         try:

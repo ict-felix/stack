@@ -17,7 +17,8 @@ class ROUtils(CommonUtils):
         try:
             adaptor, uri = AdaptorFactory.create_from_db(peer)
             logger.debug("Adaptor=%s, uri=%s" % (adaptor, uri))
-            m, urn, ss = adaptor.describe(urns, creds[0]["geni_value"])
+            # m, urn, ss = adaptor.describe(urns, creds[0]["geni_value"])
+            m, urn, ss = adaptor.describe(urns, creds)
             ret = self.generate_internal_return(m)
             return (ret, urn, ss)
         except Exception as e:
@@ -29,7 +30,8 @@ class ROUtils(CommonUtils):
             adaptor, uri = AdaptorFactory.create_from_db(peer)
             logger.debug("Adaptor=%s, uri=%s" % (adaptor, uri))
             m, urn = adaptor.provision(
-                urns, creds[0]["geni_value"], beffort, etime, gusers)
+                # urns, creds[0]["geni_value"], beffort, etime, gusers)
+                urns, creds, beffort, etime, gusers)
             ret = self.generate_internal_return(m)
             return (ret, urn)
         except Exception as e:
