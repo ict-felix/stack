@@ -97,9 +97,10 @@ class GCFCredentialManager(CredentialManagerBase):
         Loads and returns speaks-for credentials available under cred dir
         """
         cred_path = abspath(join(dirname(self.__trusted_certs), "..", "cred/"))
-        cred_files = glob.glob(cred_path+'speaks-for*.xml')  # speaks-for-<org>-<issuer>-<target>.xml
+        # speaks-for-<org>-<issuer>-<target>.xml
+        cred_files = glob.glob(cred_path + "/speaks-for*.xml")
         speaks_for_creds = []
         for f in cred_files:
-            with open(f, 'r') as xmlfile:
-                speaks_for_creds.append({'geni_value': xmlfile.read(), 'geni_version': '3', 'geni_type': 'geni_abac'})
+            with open(f, "r") as xmlfile:
+                speaks_for_creds.append({"geni_value": xmlfile.read(), "geni_version": "3", "geni_type": "geni_abac"})
         return speaks_for_creds

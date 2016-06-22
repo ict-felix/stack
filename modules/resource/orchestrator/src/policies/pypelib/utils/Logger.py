@@ -7,7 +7,8 @@ import logging
        	Simple Logger wrapper 
 '''
 
-logging.basicConfig(format='%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p', level=logging.DEBUG)
+# NOTE that this is commented due to large verbosity after this logger config is used
+#logging.basicConfig(format='%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p', level=logging.DEBUG)
 
 
 class Logger():

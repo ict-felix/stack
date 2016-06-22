@@ -13,9 +13,9 @@ import logging
 	Encapsulates logic of a simple Rule	 
 '''
 
-from pypelib.Condition import Condition
-from pypelib.persistence.PersistenceEngine import PersistenceEngine
-from pypelib.utils.Logger import Logger
+from policies.pypelib.Condition import Condition
+from policies.pypelib.persistence.PersistenceEngine import PersistenceEngine
+from policies.pypelib.utils.Logger import Logger
 
 class TerminalMatch(exceptions.Exception):
 	value = None
@@ -25,7 +25,7 @@ class TerminalMatch(exceptions.Exception):
 			self.value = rType['value']
 		else:
 			raise Exception("Unknown rule type")
-		self.desc = desc	
+		self.desc = desc
 	def __str__(self):
 		return "%s "%self.desc
 
@@ -107,6 +107,8 @@ class Rule():
 			result = self._condition.evaluate(metaObj,resolver)
 			Rule.logger.debug('Result was: %s',str(result))
 		except Exception as e:
+			import traceback
+			print traceback.print_exc()
 			Rule.logger.error('Error on rule: %s',self.dump())
 			Rule.logger.error('Exception: %s', str(e))
 			Rule.logger.error('Rule will be skiped!')

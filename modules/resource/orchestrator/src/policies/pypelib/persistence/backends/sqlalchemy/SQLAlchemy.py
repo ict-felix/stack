@@ -6,12 +6,12 @@ import logging
 
 from .RuleModel import PolicyRuleModel
 from .RuleTableModel import PolicyRuleTableModel
-from pypelib.parsing.ParseEngine import ParseEngine
-from pypelib.Rule import Rule
-from pypelib.RuleTable import*
-from pypelib.resolver.Resolver import Resolver
-from pypelib.utils.Logger import Logger
-from pypelib.utils.Exceptions import *
+from policies.pypelib.parsing.ParseEngine import ParseEngine
+from policies.pypelib.Rule import Rule
+from policies.pypelib.RuleTable import*
+from policies.pypelib.resolver.Resolver import Resolver
+from policies.pypelib.utils.Logger import Logger
+from policies.pypelib.utils.Exceptions import *
 
 from utils.commonbase import DB_SESSION
 

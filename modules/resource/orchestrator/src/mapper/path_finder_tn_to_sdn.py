@@ -7,6 +7,7 @@ from mapper.utils.filter import PathFinderTNtoSDNFilterUtils as FilterUtils
 from mapper.utils.format import PathFinderTNtoSDNFormatUtils as FormatUtils
 from mapper.utils.combination import PathFinderTNtoSDNCombinationUtils \
     as CombinationUtils
+from mapper.utils.org import PathFinderTNtoSDNOrganisationUtils as OrgUtils
 from pprint import pprint
 
 # import itertools
@@ -32,18 +33,8 @@ class PathFinderTNtoSDN(object):
         self.se_links = [x for x in db_sync_manager.get_se_links()]
         # Mapping structure to be returned is a list of possible src-dst paths
         self.mapping_tn_se_of = []
-        self.organisation_name_mappings = {
-            "psnc": ["pionier"],
-            "iminds": ["iMinds"],
-            "kddi": ["jgn-x.jp"],
-        }
         # Update with parameters passed
         self.__dict__.update(kwargs)
-
-    def get_organisation_mappings(self, organisation_name):
-        # Return possible alternatives, given an organisation name
-        return self.organisation_name_mappings.get(
-            organisation_name, [organisation_name])
 
     def format_verify_tn_interface(self, tn_interface):
         # Ensure that the TN interfaces match with their original names
@@ -72,7 +63,7 @@ class PathFinderTNtoSDN(object):
     def find_tn_interfaces_for_domain(self, domain_name):
         # Given a domain name (e.g. "kddi", "aist"), find possible TN ifaces
         tn_interfaces_cids = self.get_tn_interfaces_cids(clean=True)
-        domain_names_alt = self.get_organisation_mappings(domain_name)
+        domain_names_alt = OrgUtils.get_organisation_mappings(domain_name)
         return FilterUtils.find_tn_interfaces_for_domain(
             tn_interfaces_cids, domain_names_alt, domain_name)
 
@@ -85,9 +76,9 @@ class PathFinderTNtoSDN(object):
             self.se_links, tn_interface)
 
     def find_se_interfaces_for_domain_names(self, src_domain, dst_domain):
-        mappings = self.organisation_name_mappings
         return FilterUtils.find_se_interfaces_for_domain_names(
-            self.se_links, mappings, src_domain, dst_domain)
+            self.se_links, OrgUtils.organisation_name_mappings,
+            src_domain, dst_domain)
 
     def find_sdn_interfaces_for_se_interface(self, se_interface,
                                              negative_filter=[],
@@ -192,7 +183,7 @@ class PathFinderTNtoSDN(object):
             for src_dst_value in self.src_dst_values:
                 src_dst_value_struct = {}
                 for part in partial_mapping:
-                    src_dst_domain = getattr(self, "%s_dom" % src_dst_value)
+                    src_dst_domain = getattr(self, "%s_dom" % src_dst_domain)
                     index_serm = [src_dst_domain in l and "serm"
                                   in l for l in list(part)].index(True)
                     index_sdnrm = len(part) - index_serm - 1

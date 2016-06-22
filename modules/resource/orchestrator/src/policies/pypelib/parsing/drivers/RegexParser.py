@@ -13,8 +13,8 @@ from pyparsing import nestedExpr
 	RegexParser class
 '''
 
-from pypelib.Rule import *
-from pypelib.Condition import *
+from policies.pypelib.Rule import *
+from policies.pypelib.Condition import *
 
 
 
@@ -113,7 +113,6 @@ class RegexParser():
 		op,leftOP,rightOP,neg = RegexParser._parseComplexCond(conditionString)
 		
 		if op:
-			#print "---->Value neg:"+str(neg)+ " left: "+leftOP+"right: "+rightOP+" op:"+op
 			return Condition(RegexParser._parseCondition(leftOP),RegexParser._parseCondition(rightOP),op,neg)
 		else:
 			#Simple conditions

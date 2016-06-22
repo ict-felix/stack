@@ -1,5 +1,5 @@
-from core.utils.urns import URNUtils
-from mapper.utils.format import PathFinderTNtoSDNFormatUtils
+from mapper.utils.format import PathFinderTNtoSDNFormatUtils as FormatUtils
+from mapper.utils.org import PathFinderTNtoSDNOrganisationUtils as OrgUtils
 
 class PathFinderTNtoSDNFilterUtils(object):
 
@@ -8,11 +8,11 @@ class PathFinderTNtoSDNFilterUtils(object):
         sdn_interfaces_match = set()
         for se_link in se_links:
             se_link_interfaces = [ iface.get("component_id") for iface in se_link.get("interface_ref") ]
-            se_link_interfaces_match = any([ PathFinderTNtoSDNFormatUtils.remove_port_cid(se_interface) in se_link_interface for se_link_interface in se_link_interfaces ])
+            se_link_interfaces_match = any([ FormatUtils.remove_port_cid(se_interface) in se_link_interface for se_link_interface in se_link_interfaces ])
             if se_link_interfaces_match:
                 # Retrieve link interfaces from SDN switches that are connected with any SE interface
                 # Search for some SDN link connected to the passed SE component id (without port!)
-                se_interface_noport = PathFinderTNtoSDNFormatUtils.remove_port_cid(se_interface)
+                se_interface_noport = FormatUtils.remove_port_cid(se_interface)
                 # Also, avoid adding links SE-TN (this would introduce a never-ending loop)
                 if se_interface_noport in se_link_interfaces[0] \
                         and not any([ param in se_link_interfaces[1] for param in negative_filter ]) \
@@ -30,16 +30,17 @@ class PathFinderTNtoSDNFilterUtils(object):
         se_interfaces_matches = set()
         for se_link in se_links:
             #if tn_interface in se_link.get("component_id"):
-            se_link_interfaces = [ PathFinderTNtoSDNFormatUtils.clean_tn_stp_cid(iface.get("component_id")) for iface in se_link.get("interface_ref") ]
+            se_link_interfaces = [ FormatUtils.clean_tn_stp_cid(iface.get("component_id")) for iface in se_link.get("interface_ref") ]
             # Both source and destination must exist in an SE-SE link
             src_alias = [ src_domain ]
-            src_alias.extend([ dom for dom in PathFinderTNtoSDNFilterUtils.get_organisation_mappings(mappings, src_domain) ])
-            src_alias_match = any([ alias in iface for alias in src_alias for iface in se_link_interfaces ])
+            src_alias.extend([ dom for dom in OrgUtils.get_organisation_mappings(src_domain) ])
+            # Looking for matches in src and dst domains. Using ":" as delimiter
+            src_alias_match = any([ ":"+alias+":" in iface for alias in src_alias for iface in se_link_interfaces ])
             dst_alias = [ dst_domain ]
-            dst_alias.extend([ dom for dom in PathFinderTNtoSDNFilterUtils.get_organisation_mappings(mappings, dst_domain) ])
-            dst_alias_match = any([ alias in iface for alias in dst_alias for iface in se_link_interfaces ])
+            dst_alias.extend([ dom for dom in OrgUtils.get_organisation_mappings(dst_domain) ])
+            dst_alias_match = any([ ":"+alias+":" in iface for alias in dst_alias for iface in se_link_interfaces ])
             if src_alias_match and dst_alias_match:
-                se_link_interfaces = [ PathFinderTNtoSDNFormatUtils.clean_tn_stp_cid(iface.get("component_id")) for iface in se_link.get("interface_ref") ]
+                se_link_interfaces = [ FormatUtils.clean_tn_stp_cid(iface.get("component_id")) for iface in se_link.get("interface_ref") ]
                 candidate_set = (se_link_interfaces[0], se_link_interfaces[1])
                 if not set(candidate_set).issubset(se_interfaces_matches):
                     se_interfaces_matches.add(tuple(candidate_set))
@@ -70,9 +71,13 @@ class PathFinderTNtoSDNFilterUtils(object):
         se_interfaces_match = set()
         for se_link in se_links:
             #if tn_interface in se_link.get("component_id"):
-            se_link_interfaces = [ PathFinderTNtoSDNFormatUtils.clean_tn_stp_cid(iface.get("component_id")) for iface in se_link.get("interface_ref") ]
-            if tn_interface in se_link_interfaces:
-                se_link_interfaces = [ PathFinderTNtoSDNFormatUtils.clean_tn_stp_cid(iface.get("component_id")) for iface in se_link.get("interface_ref") ]
+            se_link_interfaces = [ FormatUtils.clean_tn_stp_cid(iface.get("component_id")) for iface in se_link.get("interface_ref") ]
+            # Checks:
+            # 1. TN interface is connected to some SE interface
+            # 2. Same authority for both (e.g. control AIST/AIST2 DC case)
+            if tn_interface in se_link_interfaces \
+                    and OrgUtils.check_auth_alt_se_in_mappings(se_link_interfaces):
+                se_link_interfaces = [ FormatUtils.clean_tn_stp_cid(iface.get("component_id")) for iface in se_link.get("interface_ref") ]
                 # Remove link interface that matches with the passed TN interface
                 se_link_interfaces.pop(se_link_interfaces.index(tn_interface))
                 se_interfaces_match.add(se_link_interfaces[0])
@@ -118,11 +123,6 @@ class PathFinderTNtoSDNFilterUtils(object):
         return tn_interfaces
 
     @staticmethod
-    def get_organisation_mappings(organisation_name_mappings, organisation_name):
-        # Return possible alternatives, given an organisation name
-        return organisation_name_mappings.get(organisation_name, [organisation_name])
-
-    @staticmethod
     def get_se_interfaces_cid_from_link(se_link, clean=False):
         # Return a list with a set of two component_id values for the given SE link
         interfaces = se_link.get("interface_ref", {})
@@ -131,7 +131,7 @@ class PathFinderTNtoSDNFilterUtils(object):
             processed_interface = interface.get("component_id", "")
             if clean == True:
                 # Some of the SE links are SE-TN links
-                processed_interface = PathFinderTNtoSDNFormatUtils.clean_tn_stp_cid(processed_interface)
+                processed_interface = FormatUtils.clean_tn_stp_cid(processed_interface)
             processed_interfaces.append(processed_interface)
         return list(set(processed_interfaces))
 
@@ -176,10 +176,10 @@ class PathFinderTNtoSDNFilterUtils(object):
             # Destination sets
             dst_dpids_avail = set([ x["sdn"] for x in mapping_path_element["dst"]["links"] ])
             if check_by_auth:
-                src_dpids_auth_avail = set(URNUtils.get_felix_authority_from_urn(x) for x in src_dpids_avail)
-                src_dpids_auth_req = set(URNUtils.get_felix_authority_from_urn(x) for x in dpids_src_list)
-                dst_dpids_auth_avail = set(URNUtils.get_felix_authority_from_urn(x) for x in dst_dpids_avail)
-                dst_dpids_auth_req = set(URNUtils.get_felix_authority_from_urn(x) for x in dpids_dst_list)
+                src_dpids_auth_avail = set(OrgUtils.get_authority(x) for x in src_dpids_avail)
+                src_dpids_auth_req = set(OrgUtils.get_authority(x) for x in dpids_src_list)
+                dst_dpids_auth_avail = set(OrgUtils.get_authority(x) for x in dst_dpids_avail)
+                dst_dpids_auth_req = set(OrgUtils.get_authority(x) for x in dpids_dst_list)
                 src_dpids_auth_match = src_dpids_auth_avail.intersection(src_dpids_auth_req)
                 dst_dpids_auth_match = dst_dpids_auth_avail.intersection(dst_dpids_auth_req)
                 # Loose check -> the authorities of the requested DPIDs must match

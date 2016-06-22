@@ -19,12 +19,12 @@ except:
 	PolicyEngine RuleTable class
 	Encapsulates logic of a simple Rule Table 
 '''
-from pypelib.resolver.Resolver import Resolver 
-from pypelib.Rule import Rule,TerminalMatch
-from pypelib.parsing.ParseEngine import ParseEngine
-from pypelib.persistence.PersistenceEngine import PersistenceEngine
-from pypelib.utils.Logger import Logger
-from pypelib.utils.Exceptions import *
+from policies.pypelib.resolver.Resolver import Resolver 
+from policies.pypelib.Rule import Rule,TerminalMatch
+from policies.pypelib.parsing.ParseEngine import ParseEngine
+from policies.pypelib.persistence.PersistenceEngine import PersistenceEngine
+from policies.pypelib.utils.Logger import Logger
+from policies.pypelib.utils.Exceptions import *
 
 class RuleEntry():
 	rule = None
@@ -203,21 +203,20 @@ class RuleTable():
 	#Go through the table
 	def evaluate(self,metaObj):
 		#Iterate over ruleset
-                print "Policies > evaluating"
+#		print "Policies > evaluating"
 		with self._mutex:
-                        print "Policies > self: ", self
-                        print "Policies > self.ruleset: ", self._ruleSet
 			for it in self._ruleSet:
-                                print "Policies > it: ", it
-                                print "Policies > it.enabled: ", it.enabled
-                                print "Policies > it.rule: ", it.rule
+#				print "Policies > rule enabled: ", it.enabled
+#				print "Policies > rule (contents): ", it.rule.__dict__
+#				print "Policies > rule.condition: ", it.rule.__dict__["_condition"].__dict__
 				if it.enabled:
 					try:
-						it.rule.evaluate(metaObj,self._resolver)	
+						it.rule.evaluate(metaObj,self._resolver)
 					except TerminalMatch as terminal:
 						if terminal.value:
 							return True
 						else:
+							print "..............................................xxxxxxxxxx terminal.value = false xxxxxxxxxxx................................."
 							raise terminal
 			if self._policy:
 				return self._policy
@@ -242,6 +241,9 @@ class RuleTable():
 	@staticmethod
 	def loadOrGenerate(name,resolverMappings,defaultParser, defaultPersistence, defaultPersistenceFlag, pType=False, uuid=None,**kwargs):
 		try:
+#			print "name=",name
+#			print "defaultPersistence=", defaultPersistence
+#			print "defaultParser=", defaultParser
 			return PersistenceEngine.load(name,defaultPersistence, resolverMappings, defaultParser,**kwargs)
 		except ZeroPolicyObjectsReturned:
 			RuleTable.logger.warning("Unable to load RuleTable, generating a new one")

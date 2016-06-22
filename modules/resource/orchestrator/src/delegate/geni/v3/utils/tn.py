@@ -362,14 +362,18 @@ class TNUtils(CommonUtils):
         return map(lambda x: ":gre:" in x, stp)
 
     @staticmethod
-    def fill_name_tag_in_tn_iface(node, dom):
+    def fill_name_tag_in_tn_iface(node, dom, transport_vlans={},
+                                  force_vlan=None):
         """
         Obtain a random VLAN from the given list of ranges of available VLANs
         obtained from TNRM.
             In case TNRM provides the full list only, the local domain will
-            be iteratively examined to minimise possible collisions of VLANs
+            be iteratively examined to minimise possible collisions of VLANs.
+            In case restricted sets of VLANs is used, those will be
+            taken into account.
         """
         new_node = {}
+        idx_vlan = 0
         # num_iter = 0
         vlan = ""
         for k in node.keys():
@@ -386,16 +390,34 @@ class TNUtils(CommonUtils):
                 #     vlan = vlans[idx_vlan]
                 #     contained, intersect = TNUtils.check_vlan_is_in_use(vlan)
                 #     num_iter += 1
-                # B) Choose from list of available VLANs from TNRM
-                idx_vlan = CommonUtils.get_random_list_position(max_iter)
-                vlan = vlans[idx_vlan]
+                # B.1) Choose from list of restricted VLANs
+                if "enabled" in transport_vlans and\
+                    "disabled" in transport_vlans:
+                    vlans_enabled = transport_vlans.get("enabled") or set()
+                    vlans_disabled = transport_vlans.get("disabled") or set()
+                    # VLANs are taken from the intersection of the free VLANs
+                    # reported by TN (to only get free VLANs) and those
+                    # restricted by configuration (to avoid them, even if free)
+                    vlans = set(vlans).intersection(set(vlans_enabled))
+                    vlans = set(vlans).difference(set(vlans_disabled))
+                    vlans = list(vlans)
+                    max_iter = int(len(vlans)-1)
+                    idx_vlan = CommonUtils.get_random_list_position(max_iter)
+                # B.2) Choose from list of available VLANs from TNRM
+                else:
+                    idx_vlan = CommonUtils.get_random_list_position(max_iter)
+                # C) If explicit VLAN is forced, use that one
+                if force_vlan is not None:
+                    vlan = force_vlan
+                else:
+                    vlan = vlans[idx_vlan]
                 new_node[k] = [{"tag": str(vlan), "name": "%s+vlan" % dom}]
             else:
                 new_node[k] = node[k]
         return new_node
 
     @staticmethod
-    def generate_tn_node(src_dom, dst_dom):
+    def generate_tn_node(src_dom, dst_dom, transport_vlans={}):
         src_node = db_sync_manager.\
             get_tn_node_interface({"component_id": src_dom})
         dst_node = db_sync_manager.\
@@ -407,8 +429,17 @@ class TNUtils(CommonUtils):
         else:
             src_node = src_node[0]
             dst_node = dst_node[0]
-        src_iface_new = TNUtils.fill_name_tag_in_tn_iface(src_node, src_dom)
-        dst_iface_new = TNUtils.fill_name_tag_in_tn_iface(dst_node, dst_dom)
+
+        src_iface_new = TNUtils.fill_name_tag_in_tn_iface(
+            src_node, src_dom, transport_vlans)
+        # If translation within NSI is not allowed, use same transport
+        # VLAN for both source and destination
+        force_vlan = None
+        if "translation" in transport_vlans and\
+            transport_vlans.get("translation") == False:
+                force_vlan = src_iface_new["vlan"][0]["tag"]
+        dst_iface_new = TNUtils.fill_name_tag_in_tn_iface(
+            dst_node, dst_dom, transport_vlans, force_vlan)
 
         # Assumption: just one TN node
         node = db_sync_manager.get_tn_nodes()[0]
@@ -450,7 +481,8 @@ class TNUtils(CommonUtils):
         return link
 
     @staticmethod
-    def identify_tn_from_sdn_and_vl(dpid_port_ids, request_stps, sdn_utils):
+    def identify_tn_from_sdn_and_vl(dpid_port_ids, request_stps,
+                                    sdn_utils, transport_vlans={}):
         # TN resources
         nodes = []
         links = []
@@ -479,7 +511,8 @@ class TNUtils(CommonUtils):
                 sdn_utils.analyze_mapped_path(dpid_port_ids, [path])
 
             src_dom, dst_dom = path["src"]["tn"], path["dst"]["tn"]
-            node = TNUtils.generate_tn_node(src_dom, dst_dom)
+            node = TNUtils.generate_tn_node(
+                src_dom, dst_dom, transport_vlans)
             src_vlan = node["interfaces"][0]["vlan"][0]["tag"]
             dst_vlan = node["interfaces"][1]["vlan"][0]["tag"]
             if node is None:
@@ -493,7 +526,8 @@ class TNUtils(CommonUtils):
         return (nodes, links)
 
     @staticmethod
-    def add_tn_to_ro_request_rspec(req_rspec, sdn_utils, vl_utils):
+    def add_tn_to_ro_request_rspec(req_rspec, sdn_utils,
+                                    vl_utils, transport_vlans={}):
         """
         Should only be run from MRO; where TN can be processed.
         """
@@ -523,7 +557,8 @@ class TNUtils(CommonUtils):
         try:
             tn_nodes, tn_links = \
                 TNUtils.identify_tn_from_sdn_and_vl(dpid_port_ids,
-                                                    request_stps, sdn_utils)
+                                                    request_stps, sdn_utils,
+                                                    transport_vlans)
         except Exception as e:
             m = "Could not obtain TN resources from SDN and VL resources. \
                 Details: %s" % str(e)

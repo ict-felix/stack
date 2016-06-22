@@ -114,7 +114,6 @@ class GENIv3Handler(xmlrpc.Dispatcher):
     def Describe(self, urns, credentials, options):
         """Delegates the call and unwraps the needed parameter.
         Also takes care of the compression option."""
-        logger.debug("+++++++++++ "+str(len(credentials)))
         self.__validate_credentials(list(credentials))
 
         logger.debug("Describe urns=%s, options=%s" % (urns, options,))
