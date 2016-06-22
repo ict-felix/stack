@@ -161,7 +161,7 @@ class CommonUtils(object):
         adaptor, uri = AdaptorFactory.create_from_db(peer)
         logger.debug("Adaptor=%s, uri=%s" % (adaptor, uri))
         return adaptor.allocate(
-            slice_urn, credentials[0]["geni_value"], str(req_rspec), end_time)
+            slice_urn, credentials, str(req_rspec), end_time)
 
     @staticmethod
     def extend_slivers(values, routing_key, slivers, db_slivers):
@@ -176,7 +176,9 @@ class CommonUtils(object):
         try:
             adaptor, uri = AdaptorFactory.create_from_db(peer)
             logger.debug("Adaptor=%s, uri=%s" % (adaptor, uri))
-            return adaptor.renew(urns, creds[0]["geni_value"], etime, beffort)
+            # return adaptor.renew(urns, creds[0]["geni_value"],
+            #                       etime, beffort)
+            return adaptor.renew(urns, creds, etime, beffort)
         except Exception as e:
             if beffort:
                 logger.error("manage_renew exception: %s", e)
@@ -190,7 +192,8 @@ class CommonUtils(object):
         try:
             adaptor, uri = AdaptorFactory.create_from_db(peer)
             logger.debug("Adaptor=%s, uri=%s" % (adaptor, uri))
-            return adaptor.status(urns, creds[0]["geni_value"])
+            # return adaptor.status(urns, creds[0]["geni_value"])
+            return adaptor.status(urns, creds)
         except Exception as e:
             logger.error("manage_status exception: %s", e)
             return []
@@ -201,7 +204,8 @@ class CommonUtils(object):
             adaptor, uri = AdaptorFactory.create_from_db(peer)
             logger.debug("Adaptor=%s, uri=%s" % (adaptor, uri))
             return adaptor.perform_operational_action(
-                urns, creds[0]["geni_value"], action, beffort)
+                # urns, creds[0]["geni_value"], action, beffort)
+                urns, creds, action, beffort)
         except Exception as e:
             # It is possible that some RMs do not implement particular actions
             # e.g. "geni_update_users", etc.
@@ -224,7 +228,8 @@ class CommonUtils(object):
         try:
             adaptor, uri = AdaptorFactory.create_from_db(peer)
             logger.debug("Adaptor=%s, uri=%s" % (adaptor, uri))
-            return adaptor.delete(urns, creds[0]["geni_value"], beffort)
+            # return adaptor.delete(urns, creds[0]["geni_value"], beffort)
+            return adaptor.delete(urns, creds, beffort)
         except Exception as e:
             if beffort:
                 logger.error("manage_delete exception: %s" % (e,))

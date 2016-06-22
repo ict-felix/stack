@@ -17,7 +17,7 @@ class COMUtils(CommonUtils):
         try:
             adaptor, uri = AdaptorFactory.create_from_db(peer)
             logger.debug("Adaptor=%s, uri=%s" % (adaptor, uri))
-            m, urn, ss = adaptor.describe(urns, creds[0]["geni_value"])
+            m, urn, ss = adaptor.describe(urns, creds)
 
             manifest = CRMv3ManifestParser(from_string=m)
             logger.debug("CRMv3ManifestParser=%s" % (manifest,))
@@ -36,7 +36,8 @@ class COMUtils(CommonUtils):
             adaptor, uri = AdaptorFactory.create_from_db(peer)
             logger.debug("Adaptor=%s, uri=%s" % (adaptor, uri))
             m, urn = adaptor.provision(
-                urns, creds[0]["geni_value"], beffort, etime, gusers)
+                # urns, creds[0]["geni_value"], beffort, etime, gusers)
+                urns, creds, beffort, etime, gusers)
 
             manifest = CRMv3ManifestParser(from_string=m)
             logger.debug("CRMv3ManifestParser=%s" % (manifest,))
@@ -80,7 +81,6 @@ class COMUtils(CommonUtils):
         route = {}
         self.__update_route(route, slivers)
         logger.debug("Slivers=%s" % (slivers,))
-
         self.__update_route_rspec(route, slivers)
         logger.info("Route=%s" % (route,))
         manifests, slivers, db_slivers = [], [], []
